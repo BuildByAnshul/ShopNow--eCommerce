@@ -74,22 +74,83 @@ A full-stack **E-commerce Web Application** built using the **MERN stack** with 
 ```
 ShopEase/
 │
-├── client/                 # Frontend (React)
+├── backend/
+│   ├── config/              # DB & external configs
+│   │   └── db.js
+│
+│   ├── controllers/         # Business logic
+│   │   ├── authController.js
+│   │   ├── productController.js
+│   │   ├── orderController.js
+│   │   └── paymentController.js
+│
+│   ├── models/              # Mongoose schemas
+│   │   ├── User.js
+│   │   ├── Product.js
+│   │   └── Order.js
+│
+│   ├── routes/              # API routes
+│   │   ├── authRoutes.js
+│   │   ├── productRoutes.js
+│   │   ├── orderRoutes.js
+│   │   └── paymentRoutes.js
+│
+│   ├── middleware/          # Auth, error handling
+│   │   ├── authMiddleware.js
+│   │   └── errorMiddleware.js
+│
+│   ├── utils/               # Helper functions (🔥 ADD THIS)
+│   │   ├── generateToken.js
+│   │   └── razorpay.js
+│
+│   ├── data/                # Seeder data (🔥 OPTIONAL)
+│   │   └── products.js
+│
+│   ├── seed.js              # DB seeding
+│   ├── server.js            # Entry point
+│   └── .env
+│
+├── frontend/
 │   ├── src/
+│   │   ├── assets/          # Images, icons
 │   │   ├── components/
+│   │   │   ├── ui/          # Buttons, Cards (design system)
+│   │   │   ├── layout/      # Navbar, Footer
+│   │   │   └── product/
+│   │   │
 │   │   ├── pages/
+│   │   │   ├── Home.jsx
+│   │   │   ├── Product.jsx
+│   │   │   ├── Cart.jsx
+│   │   │   ├── Checkout.jsx
+│   │   │   └── Admin/
+│   │   │
 │   │   ├── redux/
-│   │   ├── services/
-│   │   └── App.jsx
+│   │   │   ├── store.js
+│   │   │   ├── slices/
+│   │   │   │   ├── authSlice.js
+│   │   │   │   ├── productSlice.js
+│   │   │   │   ├── cartSlice.js
+│   │   │   │   └── orderSlice.js
+│   │   │
+│   │   ├── services/        # API calls
+│   │   │   └── api.js
+│   │   │
+│   │   ├── hooks/           # Custom hooks
+│   │   │   └── useAuth.js
+│   │   │
+│   │   ├── utils/           # Helpers
+│   │   │   └── formatPrice.js
+│   │   │
+│   │   ├── App.jsx
+│   │   └── main.jsx
 │
-├── server/                 # Backend (Node + Express)
-│   ├── controllers/
-│   ├── routes/
-│   ├── models/
-│   ├── middleware/
-│   └── server.js
+│   ├── public/
+│   ├── index.html
+│   └── .env
 │
-└── README.md
+├── README.md
+└── package.json (optional root)
 ```
 
 ---
