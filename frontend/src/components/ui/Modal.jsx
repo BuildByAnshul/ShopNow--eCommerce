@@ -20,7 +20,7 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = 'max-w-lg' }) => {
       />
       {/* Panel */}
       <div
-        className={`relative w-full ${maxWidth} bg-white rounded-3xl shadow-soft-lg p-8 animate-slide-up`}
+        className={`relative w-full ${maxWidth} max-h-[90vh] overflow-y-auto bg-white rounded-3xl shadow-soft-lg p-6 sm:p-8 animate-slide-up`}
       >
         <div className="flex items-center justify-between mb-6">
           {title && (

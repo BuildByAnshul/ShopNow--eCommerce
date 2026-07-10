@@ -129,10 +129,12 @@ const Navbar = () => {
         <div className="flex items-center gap-2">
           {/* Search */}
           <button
-            onClick={() => setSearchActive(!searchActive)}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              setSearchActive(!searchActive);
+            }}
             className="p-2.5 rounded-full hover:bg-botanical-secondary transition-colors duration-300"
             aria-label="Search"
-
           >
             <Search className="w-4.5 h-4.5 text-botanical-text" />
           </button>

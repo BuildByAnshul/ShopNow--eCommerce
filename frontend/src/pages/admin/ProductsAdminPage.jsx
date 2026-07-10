@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProducts, createProduct, updateProduct, deleteProduct } from '../../redux/slices/productSlice';
+import api from '../../services/api';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -26,6 +27,7 @@ const AdminProductsPage = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState([]);
 
   useEffect(() => {
     dispatch(fetchProducts({ limit: 100 }));
@@ -34,6 +36,7 @@ const AdminProductsPage = () => {
   const openCreate = () => {
     setSelectedProduct(null);
     setForm(emptyForm);
+    setSelectedFiles([]);
     setModalOpen(true);
   };
 
@@ -48,17 +51,41 @@ const AdminProductsPage = () => {
       stock: product.stock,
       featured: product.featured,
     });
+    setSelectedFiles([]);
     setModalOpen(true);
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
+
+    let uploadedImages = [];
+    if (selectedFiles.length > 0) {
+      const formData = new FormData();
+      formData.append('productName', form.name);
+      for (let i = 0; i < selectedFiles.length; i++) {
+        formData.append('images', selectedFiles[i]);
+      }
+      try {
+        const uploadRes = await api.post('/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        uploadedImages = uploadRes.data.urls;
+      } catch (err) {
+        alert(err.response?.data?.message || 'Upload failed');
+        setSaving(false);
+        return;
+      }
+    }
+
+    const manualImages = form.images ? form.images.split(',').map((s) => s.trim()).filter(Boolean) : [];
+    const allImages = [...manualImages, ...uploadedImages];
+
     const data = {
       ...form,
       price: Number(form.price),
       stock: Number(form.stock),
-      images: form.images ? form.images.split(',').map((s) => s.trim()).filter(Boolean) : [],
+      images: allImages,
     };
     try {
       if (selectedProduct) {
@@ -177,8 +204,8 @@ const AdminProductsPage = () => {
         title={selectedProduct ? 'Edit Product' : 'Add New Product'}
         maxWidth="max-w-2xl"
       >
-        <form onSubmit={handleSave} className="space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <form onSubmit={handleSave} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
               <Input label="Product Name" id="prod-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             </div>
@@ -197,19 +224,35 @@ const AdminProductsPage = () => {
             <Input label="Stock" id="prod-stock" type="number" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} required />
             <div className="sm:col-span-2">
               <label className="input-label" htmlFor="prod-category">Category</label>
-              <select
-                id="prod-category"
-                value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value })}
-                className="input-field capitalize"
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c} className="capitalize">{c}</option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  id="prod-category"
+                  value={form.category}
+                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  className="input-field capitalize appearance-none pr-10"
+                >
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c} className="capitalize">{c}</option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-botanical-muted">
+                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                </div>
+              </div>
             </div>
             <div className="sm:col-span-2">
-              <Input label="Image URLs (comma-separated)" id="prod-images" value={form.images} onChange={(e) => setForm({ ...form, images: e.target.value })} placeholder="https://..." />
+              <label className="input-label" htmlFor="prod-files">Upload Images</label>
+              <input
+                type="file"
+                id="prod-files"
+                multiple
+                accept="image/*"
+                onChange={(e) => setSelectedFiles(Array.from(e.target.files))}
+                className="w-full text-sm text-botanical-muted file:mr-4 file:py-2.5 file:px-5 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-botanical-secondary file:text-botanical-text hover:file:bg-botanical-primary hover:file:text-white transition-all cursor-pointer"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <Input label="Image URLs (comma-separated, manual)" id="prod-images" value={form.images} onChange={(e) => setForm({ ...form, images: e.target.value })} placeholder="https://..." />
             </div>
             <div className="sm:col-span-2 flex items-center gap-3">
               <input
