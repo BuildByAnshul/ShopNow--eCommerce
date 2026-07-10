@@ -11,38 +11,75 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Configure Multer Storage
-const storage = new CloudinaryStorage({
+// Image storage config
+const imageStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: async (req, file) => {
-    // Determine the product name for the folder structure
-    // We expect the frontend to pass 'productName' in the form data
-    const productName = req.body.productName ? req.body.productName.trim().replace(/\s+/g, '_').toLowerCase() : 'uncategorized';
-    
+    const productName = req.body.productName
+      ? req.body.productName.trim().replace(/\s+/g, '_').toLowerCase()
+      : 'uncategorized';
+
     return {
-      folder: `product/${productName}`, // Folder structure: product/<product_name>
+      folder: `product/${productName}`,
       allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
     };
   },
 });
 
-const upload = multer({ storage: storage });
+// Video storage config
+const videoStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: async (req, file) => {
+    const productName = req.body.productName
+      ? req.body.productName.trim().replace(/\s+/g, '_').toLowerCase()
+      : 'uncategorized';
 
-// Upload route for multiple images
-// The field name from the frontend must be 'images'
-router.post('/', upload.array('images', 10), async (req, res) => {
+    return {
+      folder: `product/${productName}/videos`,
+      resource_type: 'video',
+      allowed_formats: ['mp4', 'webm', 'mov', 'avi'],
+    };
+  },
+});
+
+const imageUpload = multer({ storage: imageStorage });
+const videoUpload = multer({ storage: videoStorage });
+
+// Upload multiple images
+router.post('/images', imageUpload.array('images', 10), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ message: 'No files uploaded' });
     }
+    const imageUrls = req.files.map((file) => file.path);
+    res.status(200).json({ message: 'Images uploaded successfully', urls: imageUrls });
+  } catch (error) {
+    console.error('Error uploading images:', error);
+    res.status(500).json({ message: 'Server error during image upload' });
+  }
+});
 
-    // Extract the secure URLs from the uploaded files
-    const imageUrls = req.files.map(file => file.path); // multer-storage-cloudinary provides the Cloudinary URL in file.path
+// Upload single video
+router.post('/video', videoUpload.single('video'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No video uploaded' });
+    }
+    res.status(200).json({ message: 'Video uploaded successfully', url: req.file.path });
+  } catch (error) {
+    console.error('Error uploading video:', error);
+    res.status(500).json({ message: 'Server error during video upload' });
+  }
+});
 
-    res.status(200).json({
-      message: 'Images uploaded successfully',
-      urls: imageUrls,
-    });
+// Keep old route for backward compatibility
+router.post('/', imageUpload.array('images', 10), async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: 'No files uploaded' });
+    }
+    const imageUrls = req.files.map((file) => file.path);
+    res.status(200).json({ message: 'Images uploaded successfully', urls: imageUrls });
   } catch (error) {
     console.error('Error uploading images:', error);
     res.status(500).json({ message: 'Server error during upload' });

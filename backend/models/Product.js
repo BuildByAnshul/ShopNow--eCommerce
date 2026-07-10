@@ -32,6 +32,7 @@ const productSchema = new mongoose.Schema(
       enum: ['skincare', 'haircare', 'wellness', 'aromatherapy', 'supplements', 'home'],
     },
     images: [{ type: String }],
+    video: { type: String, default: '' },
     stock: {
       type: Number,
       required: true,

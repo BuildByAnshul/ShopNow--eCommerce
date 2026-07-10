@@ -6,13 +6,13 @@ import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Spinner from '../../components/ui/Spinner';
-import { Plus, Pencil, Trash2, Star } from 'lucide-react';
+import { Plus, Pencil, Trash2, Star, ImagePlus, Film, X } from 'lucide-react';
 
 const CATEGORIES = ['skincare', 'haircare', 'wellness', 'aromatherapy', 'supplements', 'home'];
 
 const emptyForm = {
   name: '', description: '', price: '', category: 'skincare',
-  images: '', stock: '', featured: false,
+  stock: '', featured: false,
 };
 
 const formatPrice = (price) =>
@@ -27,16 +27,34 @@ const AdminProductsPage = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState([]);
+
+  // File states
+  const [mainPhoto, setMainPhoto] = useState(null);
+  const [mainPhotoPreview, setMainPhotoPreview] = useState(null);
+  const [additionalPhotos, setAdditionalPhotos] = useState([]);
+  const [additionalPreviews, setAdditionalPreviews] = useState([]);
+  const [videoFile, setVideoFile] = useState(null);
+  const [videoPreview, setVideoPreview] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState('');
 
   useEffect(() => {
     dispatch(fetchProducts({ limit: 100 }));
   }, [dispatch]);
 
+  const resetFileStates = () => {
+    setMainPhoto(null);
+    setMainPhotoPreview(null);
+    setAdditionalPhotos([]);
+    setAdditionalPreviews([]);
+    setVideoFile(null);
+    setVideoPreview(null);
+    setUploadProgress('');
+  };
+
   const openCreate = () => {
     setSelectedProduct(null);
     setForm(emptyForm);
-    setSelectedFiles([]);
+    resetFileStates();
     setModalOpen(true);
   };
 
@@ -47,47 +65,125 @@ const AdminProductsPage = () => {
       description: product.description,
       price: product.price,
       category: product.category,
-      images: product.images?.join(', ') || '',
       stock: product.stock,
       featured: product.featured,
     });
-    setSelectedFiles([]);
+    resetFileStates();
+    // Show existing main image as preview
+    if (product.images?.[0]) {
+      setMainPhotoPreview(product.images[0]);
+    }
+    // Show existing additional images
+    if (product.images?.length > 1) {
+      setAdditionalPreviews(product.images.slice(1));
+    }
+    // Show existing video
+    if (product.video) {
+      setVideoPreview(product.video);
+    }
     setModalOpen(true);
+  };
+
+  // Handle main photo selection
+  const handleMainPhoto = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setMainPhoto(file);
+      setMainPhotoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  // Handle additional photos selection (max 5)
+  const handleAdditionalPhotos = (e) => {
+    let files = Array.from(e.target.files);
+    if (files.length > 5) {
+      alert('Maximum 5 additional photos allowed. Only the first 5 will be used.');
+      files = files.slice(0, 5);
+    }
+    setAdditionalPhotos(files);
+    setAdditionalPreviews(files.map((f) => URL.createObjectURL(f)));
+  };
+
+  // Handle video selection
+  const handleVideo = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setVideoFile(file);
+      setVideoPreview(URL.createObjectURL(file));
+    }
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
-    setSaving(true);
 
-    let uploadedImages = [];
-    if (selectedFiles.length > 0) {
-      const formData = new FormData();
-      formData.append('productName', form.name);
-      for (let i = 0; i < selectedFiles.length; i++) {
-        formData.append('images', selectedFiles[i]);
-      }
-      try {
-        const uploadRes = await api.post('/upload', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        uploadedImages = uploadRes.data.urls;
-      } catch (err) {
-        alert(err.response?.data?.message || 'Upload failed');
-        setSaving(false);
-        return;
-      }
+    // Validate main photo for new products
+    if (!selectedProduct && !mainPhoto) {
+      alert('Main photo is required!');
+      return;
     }
 
-    const manualImages = form.images ? form.images.split(',').map((s) => s.trim()).filter(Boolean) : [];
-    const allImages = [...manualImages, ...uploadedImages];
+    setSaving(true);
 
-    const data = {
-      ...form,
-      price: Number(form.price),
-      stock: Number(form.stock),
-      images: allImages,
-    };
     try {
+      let allImageUrls = [];
+      let videoUrl = '';
+
+      // 1. Upload main photo
+      if (mainPhoto) {
+        setUploadProgress('Uploading main photo...');
+        const mainFormData = new FormData();
+        mainFormData.append('productName', form.name);
+        mainFormData.append('images', mainPhoto);
+        const mainRes = await api.post('/upload/images', mainFormData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        allImageUrls.push(...mainRes.data.urls);
+      } else if (selectedProduct?.images?.[0]) {
+        // Keep existing main image when editing
+        allImageUrls.push(selectedProduct.images[0]);
+      }
+
+      // 2. Upload additional photos
+      if (additionalPhotos.length > 0) {
+        setUploadProgress('Uploading additional photos...');
+        const addFormData = new FormData();
+        addFormData.append('productName', form.name);
+        for (const file of additionalPhotos) {
+          addFormData.append('images', file);
+        }
+        const addRes = await api.post('/upload/images', addFormData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        allImageUrls.push(...addRes.data.urls);
+      } else if (selectedProduct?.images?.length > 1) {
+        // Keep existing additional images when editing
+        allImageUrls.push(...selectedProduct.images.slice(1));
+      }
+
+      // 3. Upload video
+      if (videoFile) {
+        setUploadProgress('Uploading video (this may take a moment)...');
+        const vidFormData = new FormData();
+        vidFormData.append('productName', form.name);
+        vidFormData.append('video', videoFile);
+        const vidRes = await api.post('/upload/video', vidFormData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        videoUrl = vidRes.data.url;
+      } else if (selectedProduct?.video) {
+        videoUrl = selectedProduct.video;
+      }
+
+      setUploadProgress('Saving product...');
+
+      const data = {
+        ...form,
+        price: Number(form.price),
+        stock: Number(form.stock),
+        images: allImageUrls,
+        video: videoUrl,
+      };
+
       if (selectedProduct) {
         await dispatch(updateProduct({ id: selectedProduct._id, data })).unwrap();
       } else {
@@ -96,9 +192,10 @@ const AdminProductsPage = () => {
       setModalOpen(false);
       dispatch(fetchProducts({ limit: 100 }));
     } catch (err) {
-      alert(err || 'Save failed');
+      alert(err?.response?.data?.message || err || 'Save failed');
     } finally {
       setSaving(false);
+      setUploadProgress('');
     }
   };
 
@@ -240,20 +337,89 @@ const AdminProductsPage = () => {
                 </div>
               </div>
             </div>
+
+            {/* ── Main Photo (Required) ── */}
             <div className="sm:col-span-2">
-              <label className="input-label" htmlFor="prod-files">Upload Images</label>
+              <label className="input-label flex items-center gap-1.5">
+                <ImagePlus className="w-4 h-4" /> Main Photo <span className="text-red-500">*</span>
+              </label>
+              <div className="flex items-center gap-4">
+                {mainPhotoPreview && (
+                  <div className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-botanical-primary/30 flex-shrink-0">
+                    <img src={mainPhotoPreview} alt="Main" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => { setMainPhoto(null); setMainPhotoPreview(null); }}
+                      className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center"
+                    >
+                      <X className="w-3 h-3 text-white" />
+                    </button>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  id="prod-main-photo"
+                  accept="image/*"
+                  onChange={handleMainPhoto}
+                  className="w-full text-sm text-botanical-muted file:mr-4 file:py-2.5 file:px-5 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-botanical-secondary file:text-botanical-text hover:file:bg-botanical-primary hover:file:text-white transition-all cursor-pointer"
+                />
+              </div>
+              {!selectedProduct && (
+                <p className="text-xs text-botanical-muted mt-1">This will be the hero image shown on product cards</p>
+              )}
+            </div>
+
+            {/* ── Additional Photos (Optional, max 5) ── */}
+            <div className="sm:col-span-2">
+              <label className="input-label flex items-center gap-1.5">
+                <ImagePlus className="w-4 h-4" /> Additional Photos <span className="text-botanical-muted text-xs font-normal">(Optional, max 5)</span>
+              </label>
+              {additionalPreviews.length > 0 && (
+                <div className="flex gap-2 mb-2 flex-wrap">
+                  {additionalPreviews.map((src, idx) => (
+                    <div key={idx} className="relative w-16 h-16 rounded-lg overflow-hidden border border-botanical-border flex-shrink-0">
+                      <img src={src} alt={`Additional ${idx + 1}`} className="w-full h-full object-cover" />
+                    </div>
+                  ))}
+                </div>
+              )}
               <input
                 type="file"
-                id="prod-files"
+                id="prod-additional-photos"
                 multiple
                 accept="image/*"
-                onChange={(e) => setSelectedFiles(Array.from(e.target.files))}
+                onChange={handleAdditionalPhotos}
                 className="w-full text-sm text-botanical-muted file:mr-4 file:py-2.5 file:px-5 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-botanical-secondary file:text-botanical-text hover:file:bg-botanical-primary hover:file:text-white transition-all cursor-pointer"
               />
             </div>
+
+            {/* ── Video (Optional) ── */}
             <div className="sm:col-span-2">
-              <Input label="Image URLs (comma-separated, manual)" id="prod-images" value={form.images} onChange={(e) => setForm({ ...form, images: e.target.value })} placeholder="https://..." />
+              <label className="input-label flex items-center gap-1.5">
+                <Film className="w-4 h-4" /> Product Video <span className="text-botanical-muted text-xs font-normal">(Optional)</span>
+              </label>
+              {videoPreview && (
+                <div className="relative mb-2">
+                  <video src={videoPreview} controls className="w-full max-h-40 rounded-xl border border-botanical-border object-contain bg-black" />
+                  <button
+                    type="button"
+                    onClick={() => { setVideoFile(null); setVideoPreview(null); }}
+                    className="absolute top-2 right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center shadow"
+                  >
+                    <X className="w-3.5 h-3.5 text-white" />
+                  </button>
+                </div>
+              )}
+              <input
+                type="file"
+                id="prod-video"
+                accept="video/*"
+                onChange={handleVideo}
+                className="w-full text-sm text-botanical-muted file:mr-4 file:py-2.5 file:px-5 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-botanical-secondary file:text-botanical-text hover:file:bg-botanical-primary hover:file:text-white transition-all cursor-pointer"
+              />
+              <p className="text-xs text-botanical-muted mt-1">MP4, WebM, MOV supported</p>
             </div>
+
             <div className="sm:col-span-2 flex items-center gap-3">
               <input
                 type="checkbox"
@@ -267,6 +433,15 @@ const AdminProductsPage = () => {
               </label>
             </div>
           </div>
+
+          {/* Upload progress */}
+          {uploadProgress && (
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-botanical-surface rounded-xl">
+              <Spinner size="sm" />
+              <span className="font-sans text-sm text-botanical-text">{uploadProgress}</span>
+            </div>
+          )}
+
           <div className="flex gap-3 pt-2">
             <Button type="submit" loading={saving} variant="primary" className="flex-1">
               {selectedProduct ? 'Save Changes' : 'Create Product'}

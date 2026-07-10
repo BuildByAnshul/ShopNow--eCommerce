@@ -9,7 +9,7 @@ import Button from '../components/ui/Button';
 import Spinner from '../components/ui/Spinner';
 import Badge from '../components/ui/Badge';
 import ProductCard from '../components/product/ProductCard';
-import { ShoppingBag, Star, Minus, Plus, ArrowLeft, Package, Truck, ShieldCheck, RefreshCcw, CheckCircle, Zap, Leaf } from 'lucide-react';
+import { ShoppingBag, Star, Minus, Plus, ArrowLeft, Package, Truck, ShieldCheck, RefreshCcw, CheckCircle, Zap, Leaf, Play } from 'lucide-react';
 
 const formatPrice = (price) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(price);
@@ -122,6 +122,14 @@ const ProductDetailPage = () => {
     ? product.images
     : ['https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?w=800&q=80'];
 
+  // Build combined media array: all images + video (if exists)
+  const mediaItems = images.map((url) => ({ type: 'image', url }));
+  if (product.video) {
+    mediaItems.push({ type: 'video', url: product.video });
+  }
+
+  const currentMedia = mediaItems[selectedImage] || mediaItems[0];
+
   return (
     <div className="min-h-screen pt-24">
       <div className="section-container !py-8">
@@ -131,33 +139,51 @@ const ProductDetailPage = () => {
         </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Images */}
+          {/* Images + Video Gallery */}
           <div className="space-y-4">
-            {/* Main image - larger */}
+            {/* Main media viewer */}
             <div className="overflow-hidden bg-botanical-surface shadow-soft-lg rounded-3xl">
               <div className="aspect-square overflow-hidden">
-                <img
-                  src={images[selectedImage]}
-                  alt={product.name}
-                  className="w-full h-full object-cover transition-all duration-700"
-                />
+                {currentMedia?.type === 'video' ? (
+                  <video
+                    src={currentMedia.url}
+                    controls
+                    autoPlay
+                    className="w-full h-full object-contain bg-black transition-all duration-700"
+                  />
+                ) : (
+                  <img
+                    src={currentMedia?.url}
+                    alt={product.name}
+                    className="w-full h-full object-cover transition-all duration-700"
+                  />
+                )}
               </div>
             </div>
 
-            {/* Thumbnails */}
-            {images.length > 1 && (
+            {/* Thumbnails (images + video) */}
+            {mediaItems.length > 1 && (
               <div className="flex gap-3 overflow-x-auto pb-2">
-                {images.map((img, i) => (
+                {mediaItems.map((item, i) => (
                   <button
                     key={i}
                     onClick={() => setSelectedImage(i)}
-                    className={`flex-shrink-0 w-20 h-20 rounded-2xl overflow-hidden border-2 transition-all duration-300 ${
+                    className={`relative flex-shrink-0 w-20 h-20 rounded-2xl overflow-hidden border-2 transition-all duration-300 ${
                       selectedImage === i
                         ? 'border-botanical-primary shadow-soft'
                         : 'border-transparent opacity-60 hover:opacity-100'
                     }`}
                   >
-                    <img src={img} alt="" className="w-full h-full object-cover" />
+                    {item.type === 'video' ? (
+                      <>
+                        <video src={item.url} muted className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                          <Play className="w-5 h-5 text-white" fill="white" />
+                        </div>
+                      </>
+                    ) : (
+                      <img src={item.url} alt="" className="w-full h-full object-cover" />
+                    )}
                   </button>
                 ))}
               </div>
