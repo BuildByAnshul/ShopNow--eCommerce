@@ -41,10 +41,8 @@ const CheckoutPage = () => {
   React.useEffect(() => {
     if (selectedAddressIndex >= 0 && user?.addresses?.[selectedAddressIndex]) {
       setAddress(user.addresses[selectedAddressIndex]);
-    } else if (showNewAddressForm) {
-      setAddress(initialAddress);
     }
-  }, [selectedAddressIndex, showNewAddressForm, user?.addresses]);
+  }, [selectedAddressIndex, user?.addresses]);
 
   const validate = () => {
     const errs = {};
@@ -194,6 +192,7 @@ const CheckoutPage = () => {
                       onClick={() => {
                         setShowNewAddressForm(true);
                         setSelectedAddressIndex(-1);
+                        setAddress(initialAddress);
                       }}
                       className="flex items-center gap-2 text-sm font-sans font-medium text-botanical-primary hover:underline mt-4"
                     >

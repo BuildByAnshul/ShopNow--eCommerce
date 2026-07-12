@@ -295,7 +295,7 @@ const Navbar = () => {
                           <p className="font-medium text-sm text-botanical-text truncate group-hover:text-botanical-primary">
                             {product.name}
                           </p>
-                          <p className="text-xs text-botanical-muted">${product.price}</p>
+                          <p className="text-xs text-botanical-muted">₹{product.price}</p>
                         </div>
                       </button>
                     ))}

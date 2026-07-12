@@ -11,7 +11,7 @@ const CATEGORIES = [
   { label: 'Skincare', icon: '🌿', image: 'https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=600&q=80', slug: 'skincare' },
   { label: 'Haircare', icon: '✨', image: 'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?w=600&q=80', slug: 'haircare' },
   { label: 'Wellness', icon: '🌸', image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=600&q=80', slug: 'wellness' },
-  { label: 'Aromatherapy', icon: '🕯️', image: 'https://images.unsplash.com/photo-1602928309195-9ff5a71fa7a2?w=600&q=80', slug: 'aromatherapy' },
+  { label: 'Aromatherapy', icon: '🕯️', image: 'https://images.unsplash.com/photo-1608528577891-b1e1966a3d13?w=600&q=80', slug: 'aromatherapy' },
 ];
 
 const FEATURES = [
@@ -109,7 +109,7 @@ const HomePage = () => {
             {/* Main arch */}
             <div className="arch-image w-72 sm:w-80 xl:w-96 aspect-[3/4] shadow-soft-lg overflow-hidden group">
               <img
-                src="https://images.unsplash.com/photo-1608236443317-14b361138e66?w=900&q=85"
+                src="https://images.pexels.com/photos/5205662/pexels-photo-5205662.jpeg"
                 alt="Botanical wellness products"
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
@@ -225,26 +225,24 @@ const HomePage = () => {
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-            {CATEGORIES.map(({ label, image, slug }, i) => (
+            {CATEGORIES.map(({ label, image, slug }) => (
               <Link
                 key={label}
                 to={`/products?category=${slug}`}
-                className={`group block rounded-3xl overflow-hidden relative shadow-soft
-                            hover:shadow-soft-lg transition-all duration-700 hover:-translate-y-1.5
-                            ${i % 2 === 1 ? 'mt-8 lg:mt-12' : ''}`}
+                className="group block rounded-3xl overflow-hidden relative shadow-soft hover:shadow-soft-lg transition-all duration-700 hover:-translate-y-2"
               >
-                <div className="aspect-[3/4] overflow-hidden">
+                <div className="aspect-[4/5] overflow-hidden">
                   <img
                     src={image}
                     alt={label}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                   />
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-botanical-text/60 via-transparent to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-5">
-                  <h3 className="font-serif text-lg font-semibold text-white">{label}</h3>
-                  <p className="font-sans text-xs text-white/70 mt-1 flex items-center gap-1">
-                    Shop now <ArrowRight className="w-3 h-3" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-700" />
+                <div className="absolute bottom-0 left-0 right-0 p-6 flex flex-col justify-end">
+                  <h3 className="font-serif text-2xl font-medium text-white mb-1 drop-shadow-md tracking-wide">{label}</h3>
+                  <p className="font-sans text-sm font-medium text-white/90 flex items-center gap-2 transform translate-y-2 opacity-80 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
+                    Explore collection <ArrowRight className="w-4 h-4" />
                   </p>
                 </div>
               </Link>
