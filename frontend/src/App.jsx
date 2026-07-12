@@ -5,7 +5,7 @@ import Footer from './components/layout/Footer';
 import Spinner from './components/ui/Spinner';
 import { useAuth } from './hooks/useAuth';
 
-// Lazy-loaded pages
+// Lazy-loaded pages---------     ---------test
 const HomePage = lazy(() => import('./pages/HomePage'));
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));

@@ -27,6 +27,7 @@ const AdminProductsPage = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [categoryOpen, setCategoryOpen] = useState(false);
 
   // File states
   const [mainPhoto, setMainPhoto] = useState(null);
@@ -95,13 +96,21 @@ const AdminProductsPage = () => {
 
   // Handle additional photos selection (max 5)
   const handleAdditionalPhotos = (e) => {
-    let files = Array.from(e.target.files);
-    if (files.length > 5) {
-      alert('Maximum 5 additional photos allowed. Only the first 5 will be used.');
-      files = files.slice(0, 5);
+    const newFiles = Array.from(e.target.files);
+    let combined = [...additionalPhotos, ...newFiles];
+    if (combined.length > 5) {
+      alert('Maximum 5 additional photos allowed. Only keeping the first 5.');
+      combined = combined.slice(0, 5);
     }
-    setAdditionalPhotos(files);
-    setAdditionalPreviews(files.map((f) => URL.createObjectURL(f)));
+    setAdditionalPhotos(combined);
+    setAdditionalPreviews(combined.map((f) => URL.createObjectURL(f)));
+  };
+
+  const removeAdditionalPhoto = (idxToRemove) => {
+    const updatedPhotos = additionalPhotos.filter((_, i) => i !== idxToRemove);
+    const updatedPreviews = additionalPreviews.filter((_, i) => i !== idxToRemove);
+    setAdditionalPhotos(updatedPhotos);
+    setAdditionalPreviews(updatedPreviews);
   };
 
   // Handle video selection
@@ -306,34 +315,51 @@ const AdminProductsPage = () => {
             <div className="sm:col-span-2">
               <Input label="Product Name" id="prod-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             </div>
-            <div className="sm:col-span-2">
-              <label className="input-label">Description</label>
-              <textarea
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                rows={3}
-                className="input-field resize-none"
-                id="prod-desc"
-                required
-              />
+            <div className="sm:col-span-2 flex flex-col">
+              <label className="input-label" htmlFor="prod-desc">Description</label>
+              <div className="w-full bg-botanical-surface border border-botanical-border rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-botanical-primary focus-within:border-botanical-primary transition-all duration-300">
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  rows={3}
+                  className="w-full h-full px-5 py-3.5 bg-transparent font-sans text-sm text-botanical-text placeholder-botanical-muted focus:outline-none resize-none"
+                  id="prod-desc"
+                  required
+                />
+              </div>
             </div>
             <Input label="Price (₹)" id="prod-price" type="number" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required />
             <Input label="Stock" id="prod-stock" type="number" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} required />
             <div className="sm:col-span-2">
-              <label className="input-label" htmlFor="prod-category">Category</label>
+              <label className="input-label">Category</label>
               <div className="relative">
-                <select
-                  id="prod-category"
-                  value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  className="input-field capitalize appearance-none pr-10"
+                <button
+                  type="button"
+                  onClick={() => setCategoryOpen(!categoryOpen)}
+                  className="input-field flex items-center justify-between capitalize w-full focus:outline-none focus:ring-2 focus:ring-botanical-primary focus:border-botanical-primary bg-white"
                 >
+                  <span>{form.category}</span>
+                  <svg className={`fill-current h-4 w-4 text-botanical-muted transition-transform duration-300 ${categoryOpen ? 'rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                  </svg>
+                </button>
+                
+                {/* Overlay to catch outside clicks */}
+                {categoryOpen && (
+                  <div className="fixed inset-0 z-40" onClick={() => setCategoryOpen(false)} />
+                )}
+                
+                <div className={`absolute z-50 top-full left-0 right-0 mt-2 bg-white border border-botanical-border rounded-2xl shadow-soft overflow-hidden transition-all duration-300 transform origin-top ${categoryOpen ? 'opacity-100 scale-y-100 py-2' : 'opacity-0 scale-y-0 h-0 border-none'}`}>
                   {CATEGORIES.map((c) => (
-                    <option key={c} value={c} className="capitalize">{c}</option>
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => { setForm({ ...form, category: c }); setCategoryOpen(false); }}
+                      className={`w-full text-left px-5 py-2.5 font-sans text-sm capitalize transition-colors ${form.category === c ? 'bg-botanical-primary/10 text-botanical-primary font-medium' : 'text-botanical-text hover:bg-botanical-surface'}`}
+                    >
+                      {c}
+                    </button>
                   ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-botanical-muted">
-                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                 </div>
               </div>
             </div>
@@ -372,13 +398,20 @@ const AdminProductsPage = () => {
             {/* ── Additional Photos (Optional, max 5) ── */}
             <div className="sm:col-span-2">
               <label className="input-label flex items-center gap-1.5">
-                <ImagePlus className="w-4 h-4" /> Additional Photos <span className="text-botanical-muted text-xs font-normal">(Optional, max 5)</span>
+                <ImagePlus className="w-4 h-4" /> Additional Photos <span className="text-botanical-muted text-xs font-normal">(Optional, 1-5 photos)</span>
               </label>
               {additionalPreviews.length > 0 && (
                 <div className="flex gap-2 mb-2 flex-wrap">
                   {additionalPreviews.map((src, idx) => (
                     <div key={idx} className="relative w-16 h-16 rounded-lg overflow-hidden border border-botanical-border flex-shrink-0">
                       <img src={src} alt={`Additional ${idx + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removeAdditionalPhoto(idx)}
+                        className="absolute top-0.5 right-0.5 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center shadow"
+                      >
+                        <X className="w-2.5 h-2.5 text-white" />
+                      </button>
                     </div>
                   ))}
                 </div>

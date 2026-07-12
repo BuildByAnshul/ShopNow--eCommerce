@@ -1,16 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
-import { useDebounce } from '../../hooks/useDebounce';
+import Button from '../ui/Button';
 
 const CATEGORIES = ['skincare', 'haircare', 'wellness', 'aromatherapy', 'supplements', 'home'];
 
 const ProductFilters = ({ filters, onFilterChange, onClear }) => {
-  const [searchInput, setSearchInput] = useState(filters.search || '');
-  const debouncedSearch = useDebounce(searchInput, 1500);
+  const [localFilters, setLocalFilters] = useState(filters);
 
-  React.useEffect(() => {
-    onFilterChange({ search: debouncedSearch });
-  }, [debouncedSearch]);
+  // Sync with external filter changes (e.g. from Redux on 'Clear all')
+  useEffect(() => {
+    setLocalFilters(filters);
+  }, [filters]);
+
+  const handleApply = () => {
+    onFilterChange(localFilters);
+  };
 
   return (
     <aside className="w-full space-y-8">
@@ -36,8 +40,8 @@ const ProductFilters = ({ filters, onFilterChange, onClear }) => {
           <input
             type="text"
             placeholder="Search products…"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+            value={localFilters.search || ''}
+            onChange={(e) => setLocalFilters({ ...localFilters, search: e.target.value })}
             className="input-field pl-11"
             id="product-search"
           />
@@ -53,8 +57,8 @@ const ProductFilters = ({ filters, onFilterChange, onClear }) => {
               type="radio"
               name="category"
               value=""
-              checked={filters.category === ''}
-              onChange={() => onFilterChange({ category: '' })}
+              checked={localFilters.category === '' || !localFilters.category}
+              onChange={() => setLocalFilters({ ...localFilters, category: '' })}
               className="accent-botanical-primary"
               id="cat-all"
             />
@@ -68,8 +72,8 @@ const ProductFilters = ({ filters, onFilterChange, onClear }) => {
                 type="radio"
                 name="category"
                 value={cat}
-                checked={filters.category === cat}
-                onChange={() => onFilterChange({ category: cat })}
+                checked={localFilters.category === cat}
+                onChange={() => setLocalFilters({ ...localFilters, category: cat })}
                 className="accent-botanical-primary"
                 id={`cat-${cat}`}
               />
@@ -88,9 +92,9 @@ const ProductFilters = ({ filters, onFilterChange, onClear }) => {
           <input
             type="number"
             placeholder="Min"
-            value={filters.minPrice}
+            value={localFilters.minPrice || ''}
             min={0}
-            onChange={(e) => onFilterChange({ minPrice: e.target.value })}
+            onChange={(e) => setLocalFilters({ ...localFilters, minPrice: e.target.value })}
             className="input-field"
             id="price-min"
           />
@@ -98,13 +102,20 @@ const ProductFilters = ({ filters, onFilterChange, onClear }) => {
           <input
             type="number"
             placeholder="Max"
-            value={filters.maxPrice}
+            value={localFilters.maxPrice || ''}
             min={0}
-            onChange={(e) => onFilterChange({ maxPrice: e.target.value })}
+            onChange={(e) => setLocalFilters({ ...localFilters, maxPrice: e.target.value })}
             className="input-field"
             id="price-max"
           />
         </div>
+      </div>
+
+      {/* Apply Button */}
+      <div className="pt-2">
+        <Button onClick={handleApply} variant="primary" className="w-full">
+          Apply Filters
+        </Button>
       </div>
     </aside>
   );
