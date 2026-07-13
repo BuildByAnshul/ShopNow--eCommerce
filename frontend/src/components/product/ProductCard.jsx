@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ShoppingBag, Star } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useCart } from '../../hooks/useCart';
 import Button from '../ui/Button';
 
@@ -14,6 +15,7 @@ const ProductCard = ({ product }) => {
     e.preventDefault();
     e.stopPropagation();
     addToCart(product, 1);
+    toast.success(`${product.name} added to cart`);
   };
 
   return (

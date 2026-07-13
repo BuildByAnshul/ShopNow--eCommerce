@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
+import toast from 'react-hot-toast';
 import { useCart } from '../hooks/useCart';
 import { useAuth } from '../hooks/useAuth';
 import { createOrder } from '../redux/slices/orderSlice';
@@ -28,6 +29,7 @@ const CheckoutPage = () => {
   const [errors, setErrors] = useState({});
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [step, setStep] = useState('address'); // 'address' | 'review' | 'success'
+  const [paymentMethod, setPaymentMethod] = useState('online');
 
   const shipping = total >= 999 ? 0 : 99;
   const grandTotal = total + shipping;
@@ -63,20 +65,39 @@ const CheckoutPage = () => {
           await dispatch(addAddress(address)).unwrap();
           setStep('review');
         } catch (err) {
-          alert('Failed to save address: ' + err);
+          toast.error('Failed to save address: ' + err);
         }
       }
     } else {
       if (selectedAddressIndex >= 0) {
         setStep('review');
       } else {
-        alert('Please select an address or add a new one');
+        toast.error('Please select an address or add a new one');
       }
     }
   };
 
   const handlePay = async () => {
     setPaymentLoading(true);
+    
+    if (paymentMethod === 'cod') {
+      try {
+        const orderData = {
+          items: items.map((i) => ({ product: i.product._id, quantity: i.quantity })),
+          address,
+          paymentMethod: 'cod',
+        };
+        await dispatch(createOrder(orderData)).unwrap();
+        clearCart();
+        setStep('success');
+      } catch (err) {
+        toast.error(err?.message || 'Order failed. Please try again.');
+      } finally {
+        setPaymentLoading(false);
+      }
+      return;
+    }
+
     try {
       // 1. Create Razorpay order
       const { orderId, amount, currency, key } = await paymentService.createOrder(grandTotal);
@@ -110,7 +131,7 @@ const CheckoutPage = () => {
       setStep('success');
     } catch (err) {
       console.error('Payment error:', err);
-      alert(err?.message || 'Payment failed. Please try again.');
+      toast.error(err?.message || 'Payment failed. Please try again.');
     } finally {
       setPaymentLoading(false);
     }
@@ -272,10 +293,46 @@ const CheckoutPage = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 text-xs text-botanical-muted font-sans px-2">
-                  <ShieldCheck className="w-4 h-4 text-botanical-primary flex-shrink-0" />
-                  Your payment is secured by Razorpay with 256-bit SSL encryption.
+                <div className="bg-white rounded-3xl p-7 shadow-soft">
+                  <h2 className="font-serif text-xl font-semibold text-botanical-text mb-4">Payment Method</h2>
+                  <div className="space-y-3">
+                    <label className={`flex items-center gap-3 p-4 border rounded-2xl cursor-pointer transition-colors ${paymentMethod === 'online' ? 'border-botanical-primary bg-botanical-surface' : 'border-botanical-border hover:border-botanical-primary'}`}>
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="online"
+                        checked={paymentMethod === 'online'}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                        className="text-botanical-primary focus:ring-botanical-primary w-4 h-4"
+                      />
+                      <div>
+                        <p className="font-sans font-medium text-botanical-text">Pay Online Securely</p>
+                        <p className="font-sans text-xs text-botanical-muted mt-0.5">UPI, Cards, NetBanking, Wallets</p>
+                      </div>
+                    </label>
+                    <label className={`flex items-center gap-3 p-4 border rounded-2xl cursor-pointer transition-colors ${paymentMethod === 'cod' ? 'border-botanical-primary bg-botanical-surface' : 'border-botanical-border hover:border-botanical-primary'}`}>
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="cod"
+                        checked={paymentMethod === 'cod'}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                        className="text-botanical-primary focus:ring-botanical-primary w-4 h-4"
+                      />
+                      <div>
+                        <p className="font-sans font-medium text-botanical-text">Cash on Delivery (COD)</p>
+                        <p className="font-sans text-xs text-botanical-muted mt-0.5">Pay with cash upon delivery</p>
+                      </div>
+                    </label>
+                  </div>
                 </div>
+
+                {paymentMethod === 'online' && (
+                  <div className="flex items-center gap-3 text-xs text-botanical-muted font-sans px-2">
+                    <ShieldCheck className="w-4 h-4 text-botanical-primary flex-shrink-0" />
+                    Your payment is secured by Razorpay with 256-bit SSL encryption.
+                  </div>
+                )}
 
                 <Button
                   onClick={handlePay}
@@ -283,7 +340,7 @@ const CheckoutPage = () => {
                   variant="primary"
                   className="w-full text-base py-4"
                 >
-                  Pay {formatPrice(grandTotal)} securely
+                  {paymentMethod === 'online' ? `Pay ${formatPrice(grandTotal)} securely` : `Place Order (COD)`}
                 </Button>
               </div>
             )}

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import toast from 'react-hot-toast';
 import { fetchProducts, createProduct, updateProduct, deleteProduct } from '../../redux/slices/productSlice';
 import api from '../../services/api';
 import Modal from '../../components/ui/Modal';
@@ -13,6 +14,7 @@ const CATEGORIES = ['skincare', 'haircare', 'wellness', 'aromatherapy', 'supplem
 const emptyForm = {
   name: '', description: '', price: '', category: 'skincare',
   stock: '', featured: false,
+  storage: '', shelfLife: '', suitableFor: '', howToUse: '',
 };
 
 const formatPrice = (price) =>
@@ -68,6 +70,10 @@ const AdminProductsPage = () => {
       category: product.category,
       stock: product.stock,
       featured: product.featured,
+      storage: product.details?.storage || '',
+      shelfLife: product.details?.shelfLife || '',
+      suitableFor: product.details?.suitableFor || '',
+      howToUse: product.howToUse?.join('\n') || '',
     });
     resetFileStates();
     // Show existing main image as preview
@@ -99,7 +105,7 @@ const AdminProductsPage = () => {
     const newFiles = Array.from(e.target.files);
     let combined = [...additionalPhotos, ...newFiles];
     if (combined.length > 5) {
-      alert('Maximum 5 additional photos allowed. Only keeping the first 5.');
+      toast.error('Maximum 5 additional photos allowed. Only keeping the first 5.');
       combined = combined.slice(0, 5);
     }
     setAdditionalPhotos(combined);
@@ -127,7 +133,7 @@ const AdminProductsPage = () => {
 
     // Validate main photo for new products
     if (!selectedProduct && !mainPhoto) {
-      alert('Main photo is required!');
+      toast.error('Main photo is required!');
       return;
     }
 
@@ -191,17 +197,25 @@ const AdminProductsPage = () => {
         stock: Number(form.stock),
         images: allImageUrls,
         video: videoUrl,
+        details: {
+          storage: form.storage,
+          shelfLife: form.shelfLife,
+          suitableFor: form.suitableFor,
+        },
+        howToUse: form.howToUse.split('\n').filter(s => s.trim() !== ''),
       };
 
       if (selectedProduct) {
         await dispatch(updateProduct({ id: selectedProduct._id, data })).unwrap();
+        toast.success('Product updated successfully');
       } else {
         await dispatch(createProduct(data)).unwrap();
+        toast.success('Product created successfully');
       }
       setModalOpen(false);
       dispatch(fetchProducts({ limit: 100 }));
     } catch (err) {
-      alert(err?.response?.data?.message || err || 'Save failed');
+      toast.error(err?.response?.data?.message || err?.message || 'Save failed');
     } finally {
       setSaving(false);
       setUploadProgress('');
@@ -330,6 +344,30 @@ const AdminProductsPage = () => {
             </div>
             <Input label="Price (₹)" id="prod-price" type="number" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required />
             <Input label="Stock" id="prod-stock" type="number" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} required />
+            
+            <div className="sm:col-span-2 border-t border-botanical-border pt-4 mt-2">
+              <h3 className="font-serif text-lg font-semibold text-botanical-text mb-4">Product Details & Usage</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input label="Storage Instructions" id="prod-storage" value={form.storage} onChange={(e) => setForm({ ...form, storage: e.target.value })} placeholder="e.g. Cool & Dry Place" />
+                <Input label="Shelf Life" id="prod-shelflife" value={form.shelfLife} onChange={(e) => setForm({ ...form, shelfLife: e.target.value })} placeholder="e.g. 24 Months" />
+                <div className="sm:col-span-2">
+                  <Input label="Suitable For" id="prod-suitable" value={form.suitableFor} onChange={(e) => setForm({ ...form, suitableFor: e.target.value })} placeholder="e.g. All Skin Types" />
+                </div>
+                <div className="sm:col-span-2 flex flex-col">
+                  <label className="input-label" htmlFor="prod-how">How to Use (One step per line)</label>
+                  <div className="w-full bg-botanical-surface border border-botanical-border rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-botanical-primary focus-within:border-botanical-primary transition-all duration-300">
+                    <textarea
+                      value={form.howToUse}
+                      onChange={(e) => setForm({ ...form, howToUse: e.target.value })}
+                      rows={4}
+                      className="w-full h-full px-5 py-3.5 bg-transparent font-sans text-sm text-botanical-text placeholder-botanical-muted focus:outline-none resize-none"
+                      id="prod-how"
+                      placeholder="Clean and dry the area thoroughly&#10;Apply a small amount evenly&#10;..."
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
             <div className="sm:col-span-2">
               <label className="input-label">Category</label>
               <div className="relative">

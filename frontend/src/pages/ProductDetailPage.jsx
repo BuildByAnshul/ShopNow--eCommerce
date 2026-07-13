@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
+import toast from 'react-hot-toast';
 import { fetchProductById, clearCurrentProduct } from '../redux/slices/productSlice';
 import { useCart } from '../hooks/useCart';
 import { useAuth } from '../hooks/useAuth';
@@ -9,7 +10,7 @@ import Button from '../components/ui/Button';
 import Spinner from '../components/ui/Spinner';
 import Badge from '../components/ui/Badge';
 import ProductCard from '../components/product/ProductCard';
-import { ShoppingBag, Star, Minus, Plus, ArrowLeft, Package, Truck, ShieldCheck, RefreshCcw, CheckCircle, Zap, Leaf, Play } from 'lucide-react';
+import { ShoppingBag, Star, Minus, Plus, ArrowLeft, Package, Truck, ShieldCheck, RefreshCcw, CheckCircle, Zap, Leaf, Play, Trash2 } from 'lucide-react';
 
 const formatPrice = (price) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(price);
@@ -68,12 +69,13 @@ const ProductDetailPage = () => {
   const handleAddToCart = () => {
     addToCart(product, quantity);
     setAdded(true);
+    toast.success(`${quantity} ${product.name} added to cart`);
     setTimeout(() => setAdded(false), 2000);
   };
 
   const handleAddReview = async () => {
     if (!user) {
-      alert('Please login to add a review');
+      toast.error('Please login to add a review');
       return;
     }
     if (!reviewComment.trim()) {
@@ -100,6 +102,17 @@ const ProductDetailPage = () => {
       setReviewError(err.response?.data?.message || 'Failed to add review');
     } finally {
       setReviewLoading(false);
+    }
+  };
+
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm('Are you sure you want to delete this review?')) return;
+    try {
+      await productService.removeReview(id, reviewId);
+      toast.success('Review deleted successfully');
+      dispatch(fetchProductById(id));
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to delete review');
     }
   };
 
@@ -140,30 +153,10 @@ const ProductDetailPage = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Images + Video Gallery */}
-          <div className="space-y-4">
-            {/* Main media viewer */}
-            <div className="overflow-hidden bg-botanical-surface shadow-soft-lg rounded-3xl">
-              <div className="aspect-square overflow-hidden">
-                {currentMedia?.type === 'video' ? (
-                  <video
-                    src={currentMedia.url}
-                    controls
-                    autoPlay
-                    className="w-full h-full object-contain bg-black transition-all duration-700"
-                  />
-                ) : (
-                  <img
-                    src={currentMedia?.url}
-                    alt={product.name}
-                    className="w-full h-full object-cover transition-all duration-700"
-                  />
-                )}
-              </div>
-            </div>
-
+          <div className="flex flex-col md:flex-row gap-4">
             {/* Thumbnails (images + video) */}
             {mediaItems.length > 1 && (
-              <div className="flex gap-3 overflow-x-auto pb-2">
+              <div className="flex md:flex-col gap-3 overflow-x-auto md:overflow-y-auto md:max-h-[500px] custom-scrollbar pb-2 md:pb-0 md:pr-2 order-2 md:order-1 flex-shrink-0">
                 {mediaItems.map((item, i) => (
                   <button
                     key={i}
@@ -188,6 +181,26 @@ const ProductDetailPage = () => {
                 ))}
               </div>
             )}
+
+            {/* Main media viewer */}
+            <div className="flex-1 overflow-hidden bg-botanical-surface shadow-soft-lg rounded-3xl order-1 md:order-2">
+              <div className="aspect-square overflow-hidden">
+                {currentMedia?.type === 'video' ? (
+                  <video
+                    src={currentMedia.url}
+                    controls
+                    autoPlay
+                    className="w-full h-full object-contain bg-black transition-all duration-700"
+                  />
+                ) : (
+                  <img
+                    src={currentMedia?.url}
+                    alt={product.name}
+                    className="w-full h-full object-cover transition-all duration-700"
+                  />
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Info */}
@@ -338,11 +351,11 @@ const ProductDetailPage = () => {
             <ul className="space-y-3">
               <li className="flex justify-between items-start gap-4 py-2 border-b border-botanical-border/30">
                 <span className="font-sans text-sm text-botanical-muted">Storage</span>
-                <span className="font-sans font-medium text-botanical-text text-sm">Cool & Dry Place</span>
+                <span className="font-sans font-medium text-botanical-text text-sm">{product.details?.storage || 'Cool & Dry Place'}</span>
               </li>
               <li className="flex justify-between items-start gap-4 py-2 border-b border-botanical-border/30">
                 <span className="font-sans text-sm text-botanical-muted">Shelf Life</span>
-                <span className="font-sans font-medium text-botanical-text text-sm">24 Months</span>
+                <span className="font-sans font-medium text-botanical-text text-sm">{product.details?.shelfLife || '24 Months'}</span>
               </li>
               <li className="flex justify-between items-start gap-4 py-2 border-b border-botanical-border/30">
                 <span className="font-sans text-sm text-botanical-muted">Type</span>
@@ -350,7 +363,7 @@ const ProductDetailPage = () => {
               </li>
               <li className="flex justify-between items-start gap-4 py-2">
                 <span className="font-sans text-sm text-botanical-muted">Suitable For</span>
-                <span className="font-sans font-medium text-botanical-text text-sm">All Skin Types</span>
+                <span className="font-sans font-medium text-botanical-text text-sm">{product.details?.suitableFor || 'All Skin Types'}</span>
               </li>
             </ul>
           </div>
@@ -362,22 +375,17 @@ const ProductDetailPage = () => {
               How to Use
             </h3>
             <ol className="space-y-3">
-              <li className="flex gap-3">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-botanical-primary text-white flex items-center justify-center font-sans text-xs font-bold">1</span>
-                <span className="font-sans text-sm text-botanical-muted">Clean and dry the area thoroughly</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-botanical-primary text-white flex items-center justify-center font-sans text-xs font-bold">2</span>
-                <span className="font-sans text-sm text-botanical-muted">Apply a small amount evenly</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-botanical-primary text-white flex items-center justify-center font-sans text-xs font-bold">3</span>
-                <span className="font-sans text-sm text-botanical-muted">Massage gently for 1-2 minutes</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-botanical-primary text-white flex items-center justify-center font-sans text-xs font-bold">4</span>
-                <span className="font-sans text-sm text-botanical-muted">Use 2-3 times daily for best results</span>
-              </li>
+              {(product.howToUse?.length > 0 ? product.howToUse : [
+                'Clean and dry the area thoroughly',
+                'Apply a small amount evenly',
+                'Massage gently for 1-2 minutes',
+                'Use 2-3 times daily for best results'
+              ]).map((step, idx) => (
+                <li key={idx} className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-botanical-primary text-white flex items-center justify-center font-sans text-xs font-bold">{idx + 1}</span>
+                  <span className="font-sans text-sm text-botanical-muted">{step}</span>
+                </li>
+              ))}
             </ol>
           </div>
         </div>
@@ -481,9 +489,16 @@ const ProductDetailPage = () => {
                         ))}
                       </div>
                     </div>
-                    <p className="font-sans text-xs text-botanical-muted">
-                      {new Date(review.createdAt).toLocaleDateString('en-IN')}
-                    </p>
+                    <div className="flex items-center gap-3">
+                      <p className="font-sans text-xs text-botanical-muted">
+                        {new Date(review.createdAt).toLocaleDateString('en-IN')}
+                      </p>
+                      {user?.role === 'admin' && (
+                        <button onClick={() => handleDeleteReview(review._id)} className="text-botanical-muted hover:text-red-500 transition-colors p-1" title="Delete Review">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <p className="font-sans text-sm text-botanical-muted leading-relaxed">{review.comment}</p>
                 </div>

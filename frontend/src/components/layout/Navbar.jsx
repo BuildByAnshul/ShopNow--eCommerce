@@ -1,15 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingBag, Menu, X, Leaf, LogOut, LayoutDashboard, Search, X as CloseIcon } from 'lucide-react';
+import { ShoppingBag, Menu, X, Leaf, LogOut, LayoutDashboard, Search, X as CloseIcon, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useCart } from '../../hooks/useCart';
 import { productService } from '../../services/productService';
 
-const navLinks = [
-  { label: 'Shop', to: '/products' },
-  { label: 'Categories', to: '/products' },
-  { label: 'About', to: '/about' },
-];
+const CATEGORIES = ['skincare', 'haircare', 'wellness', 'aromatherapy', 'supplements', 'home'];
 
 const Navbar = () => {
 
@@ -114,15 +110,34 @@ const Navbar = () => {
 
         {/* ── Desktop Links ── */}
         <div className="hidden md:flex items-center gap-8">
-          {navLinks.map((link) => (
-            <Link
-              key={link.to + link.label}
-              to={link.to}
-              className={`nav-link ${location.pathname === link.to && link.label === 'Shop' ? 'text-botanical-accent' : ''}`}
-            >
-              {link.label}
-            </Link>
-          ))}
+          <Link
+            to="/products"
+            className={`nav-link ${location.pathname === '/products' ? 'text-botanical-accent' : ''}`}
+          >
+            Shop
+          </Link>
+          
+          <div className="relative group">
+            <button className="nav-link flex items-center gap-1 focus:outline-none cursor-pointer">
+              Categories <ChevronDown className="w-3.5 h-3.5 transition-transform group-hover:rotate-180" />
+            </button>
+            <div className="absolute top-full left-0 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 z-50">
+              <div className="w-48 bg-white rounded-2xl shadow-soft-lg border border-botanical-border overflow-hidden p-2 flex flex-col">
+                {CATEGORIES.map(c => (
+                  <Link key={c} to={`/products?category=${c}`} className="px-4 py-2 text-sm font-sans text-botanical-text hover:bg-botanical-surface hover:text-botanical-primary rounded-xl capitalize transition-colors">
+                    {c}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <Link
+            to="/about"
+            className={`nav-link ${location.pathname === '/about' ? 'text-botanical-accent' : ''}`}
+          >
+            About
+          </Link>
         </div>
 
         {/* ── Actions ── */}
@@ -221,13 +236,24 @@ const Navbar = () => {
       <div className={`md:hidden transition-all duration-500 ease-in-out overflow-hidden ${mobileOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
         } bg-botanical-bg/98 backdrop-blur-md border-t border-botanical-border`}>
         <div className="px-6 py-6 flex flex-col gap-4">
-          {navLinks.map((link) => (
-            <Link key={link.label} to={link.to}
-              className="font-sans text-base font-medium text-botanical-text
-                         hover:text-botanical-accent transition-colors">
-              {link.label}
-            </Link>
-          ))}
+          <Link to="/products" className={`font-sans text-base font-medium transition-colors ${location.pathname === '/products' ? 'text-botanical-accent' : 'text-botanical-text hover:text-botanical-accent'}`}>
+            Shop
+          </Link>
+          
+          <div className="flex flex-col gap-2">
+            <span className="font-sans text-base font-medium text-botanical-muted">Categories</span>
+            <div className="flex flex-col gap-3 pl-4 border-l-2 border-botanical-surface ml-2">
+              {CATEGORIES.map(c => (
+                <Link key={c} onClick={() => setMobileOpen(false)} to={`/products?category=${c}`} className="font-sans text-sm text-botanical-text hover:text-botanical-primary capitalize">
+                  {c}
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <Link to="/about" className={`font-sans text-base font-medium transition-colors ${location.pathname === '/about' ? 'text-botanical-accent' : 'text-botanical-text hover:text-botanical-accent'}`}>
+            About
+          </Link>
           {!isAuthenticated && (
             <Link to="/login" className="btn-primary text-center mt-2">Sign In</Link>
           )}
@@ -238,15 +264,17 @@ const Navbar = () => {
       </div>
 
       {/* ── Search Dropdown ── */}
-      <div ref={searchRef} className={`absolute top-20 left-0 right-0 transition-all duration-300 z-50
-                                        ${searchActive ? 'max-h-96 opacity-100 pointer-events-auto' : 'max-h-0 opacity-0 pointer-events-none'}`}>
-        <div className="bg-white/95 backdrop-blur-md border-b border-botanical-border shadow-soft-lg">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div ref={searchRef} className={`absolute top-[calc(100%+0.5rem)] left-0 right-0 flex justify-center px-4 sm:px-6 transition-all duration-300 z-50 transform origin-top
+                                        ${searchActive ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-0 pointer-events-none'}`}>
+        <div className="bg-white border border-botanical-border rounded-3xl shadow-soft-xl pb-6 pt-4 w-full max-w-3xl">
+          <div className="px-2 sm:px-4">
+            
             {/* Search Input */}
-            <div className="flex gap-2">
+            <div className="flex items-center gap-3 bg-gray-50/70 border border-botanical-border/60 rounded-2xl px-4 py-1 focus-within:ring-2 focus-within:ring-botanical-primary transition-all">
+              <Search className="w-5 h-5 text-botanical-muted" />
               <input
                 type="text"
-                placeholder="Search products..."
+                placeholder="Search for products, categories..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => {
@@ -254,62 +282,75 @@ const Navbar = () => {
                     handleSearchSelect(searchQuery);
                   }
                 }}
-                className="flex-1 px-4 py-2.5 border border-botanical-border rounded-lg focus:outline-none
-                           focus:ring-2 focus:ring-botanical-primary text-sm"
-                autoFocus
+                className="flex-1 bg-transparent border-none focus:outline-none text-botanical-text py-3 text-base"
+                autoFocus={searchActive}
               />
-              <button
-                onClick={() => {
-                  setSearchActive(false);
-                  setSearchQuery('');
-                  setSearchResults([]);
-                }}
-                className="p-2.5 rounded-lg hover:bg-botanical-secondary transition-colors"
-              >
-                <X className="w-5 h-5 text-botanical-text" />
-              </button>
+              {searchQuery ? (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="p-1.5 rounded-full hover:bg-botanical-border text-botanical-muted transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              ) : null}
             </div>
 
-            {/* Search Results Dropdown - Only show when there's a query */}
+            {/* Search Results */}
             {searchQuery.trim() && (
-              <div className="mt-3 pt-3 border-t border-botanical-border max-h-64 overflow-y-auto">
+              <div className="mt-4 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
                 {searchLoading ? (
-                  <div className="py-6 text-center text-botanical-muted text-sm">Searching...</div>
+                  <div className="py-8 text-center text-botanical-muted font-sans text-sm animate-pulse">
+                    Searching...
+                  </div>
                 ) : searchResults.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-2">
                     {searchResults.map((product) => (
                       <button
                         key={product._id}
                         onClick={() => handleProductClick(product._id)}
-                        className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-botanical-surface
-                                   transition-colors text-left group"
+                        className="flex items-center gap-4 p-3 rounded-2xl hover:bg-botanical-surface transition-colors text-left group border border-transparent hover:border-botanical-border"
                       >
-                        {product.images?.[0] && (
-                          <img
-                            src={product.images[0]}
-                            alt={product.name}
-                            className="w-10 h-10 rounded object-cover flex-shrink-0"
-                          />
-                        )}
+                        <div className="w-14 h-14 rounded-xl overflow-hidden bg-white shadow-sm flex-shrink-0">
+                          {product.images?.[0] ? (
+                            <img
+                              src={product.images[0]}
+                              alt={product.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-botanical-secondary flex items-center justify-center">
+                              <Leaf className="w-5 h-5 text-botanical-primary opacity-50" />
+                            </div>
+                          )}
+                        </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm text-botanical-text truncate group-hover:text-botanical-primary">
+                          <p className="font-sans font-semibold text-sm text-botanical-text truncate group-hover:text-botanical-primary transition-colors">
                             {product.name}
                           </p>
-                          <p className="text-xs text-botanical-muted">₹{product.price}</p>
+                          <p className="font-sans text-xs text-botanical-muted capitalize mt-0.5">
+                            {product.category}
+                          </p>
+                          <p className="font-sans font-medium text-sm text-botanical-accent mt-1">
+                            ₹{product.price}
+                          </p>
                         </div>
                       </button>
                     ))}
-                    <button
-                      onClick={() => handleSearchSelect(searchQuery)}
-                      className="w-full py-2 mt-2 pt-3 border-t border-botanical-border text-sm
-                                 text-botanical-primary hover:text-botanical-accent font-medium transition-colors"
-                    >
-                      View all results for "{searchQuery}"
-                    </button>
+                    
+                    <div className="pt-2 pb-1">
+                      <button
+                        onClick={() => handleSearchSelect(searchQuery)}
+                        className="w-full py-3 bg-botanical-surface rounded-xl text-sm font-sans font-medium text-botanical-primary hover:text-botanical-accent hover:bg-botanical-secondary transition-colors"
+                      >
+                        View all results for "{searchQuery}"
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  <div className="py-6 text-center text-botanical-muted text-sm">
-                    No products found
+                  <div className="py-12 text-center">
+                    <Search className="w-8 h-8 text-botanical-border mx-auto mb-3" />
+                    <p className="font-sans text-botanical-text font-medium text-sm">No products found</p>
+                    <p className="font-sans text-botanical-muted text-xs mt-1">Try checking for typos or searching with different keywords.</p>
                   </div>
                 )}
               </div>

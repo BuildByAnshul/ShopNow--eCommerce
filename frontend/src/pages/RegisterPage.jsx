@@ -66,8 +66,13 @@ const RegisterPage = () => {
       </div>
 
       {/* Right form */}
-      <div className="flex-1 flex items-center justify-center px-6 py-16 bg-botanical-bg">
-        <div className="w-full max-w-md animate-slide-up">
+      <div className="flex-1 flex flex-col justify-center px-6 py-16 bg-botanical-bg relative">
+        <div className="absolute top-8 left-8 hidden lg:block">
+          <Link to="/" className="text-sm font-sans text-botanical-muted hover:text-botanical-primary flex items-center gap-1 transition-colors">
+            ← Back to Home
+          </Link>
+        </div>
+        <div className="w-full max-w-md mx-auto animate-slide-up">
           <Link to="/" className="flex items-center gap-2 mb-10 lg:hidden">
             <div className="w-8 h-8 rounded-full bg-botanical-primary flex items-center justify-center">
               <Leaf className="w-4 h-4 text-white" fill="white" />

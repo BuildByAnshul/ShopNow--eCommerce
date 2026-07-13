@@ -25,6 +25,10 @@ export const productService = {
     const res = await api.post(`/products/${id}/reviews`, data);
     return res.data;
   },
+  removeReview: async (productId, reviewId) => {
+    const res = await api.delete(`/products/${productId}/reviews/${reviewId}`);
+    return res.data;
+  },
   checkPurchase: async (productId) => {
     const res = await api.get(`/orders/check-purchase/${productId}`);
     return res.data;

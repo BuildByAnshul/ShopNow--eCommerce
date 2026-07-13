@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
+import toast from 'react-hot-toast';
 import { fetchAllOrders, updateOrderStatus } from '../../redux/slices/orderSlice';
 import Badge from '../../components/ui/Badge';
 import Spinner from '../../components/ui/Spinner';
@@ -33,9 +35,10 @@ const AdminOrdersPage = () => {
     setSaving(true);
     try {
       await dispatch(updateOrderStatus({ id: selectedOrder._id, data: statusForm })).unwrap();
+      toast.success('Order status updated successfully');
       setSelectedOrder(null);
     } catch (err) {
-      alert(err || 'Update failed');
+      toast.error(err?.message || err || 'Update failed');
     } finally {
       setSaving(false);
     }
@@ -87,13 +90,21 @@ const AdminOrdersPage = () => {
                       <td className="px-6 py-4 font-sans text-xs text-botanical-muted whitespace-nowrap">
                         {new Date(order.createdAt).toLocaleDateString('en-IN')}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-4 flex flex-col gap-2">
                         <button
                           onClick={() => openStatusModal(order)}
-                          className="font-sans text-xs text-botanical-primary hover:underline whitespace-nowrap"
+                          className="font-sans text-xs text-left text-botanical-primary hover:underline whitespace-nowrap"
                         >
                           Update Status
                         </button>
+                        {order.orderStatus === 'delivered' && (
+                          <Link
+                            to={`/invoice/${order._id}`}
+                            className="font-sans text-xs text-left text-botanical-accent hover:underline whitespace-nowrap"
+                          >
+                            View Invoice
+                          </Link>
+                        )}
                       </td>
                     </tr>
                   ))}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { login, clearError } from '../redux/slices/authSlice';
 import Input from '../components/ui/Input';
@@ -9,15 +9,18 @@ import { Leaf, Eye, EyeOff } from 'lucide-react';
 const LoginPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated, loading, error } = useSelector((s) => s.auth);
 
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPw, setShowPw] = useState(false);
 
+  const from = location.state?.from?.pathname || '/';
+
   useEffect(() => {
-    if (isAuthenticated) navigate('/');
+    if (isAuthenticated) navigate(from, { replace: true });
     return () => dispatch(clearError());
-  }, [isAuthenticated]);
+  }, [isAuthenticated, navigate, from, dispatch]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -58,8 +61,13 @@ const LoginPage = () => {
       </div>
 
       {/* Right form */}
-      <div className="flex-1 flex items-center justify-center px-6 py-16 bg-botanical-bg">
-        <div className="w-full max-w-md animate-slide-up">
+      <div className="flex-1 flex flex-col justify-center px-6 py-16 bg-botanical-bg relative">
+        <div className="absolute top-8 left-8 hidden lg:block">
+          <Link to="/" className="text-sm font-sans text-botanical-muted hover:text-botanical-primary flex items-center gap-1 transition-colors">
+            ← Back to Home
+          </Link>
+        </div>
+        <div className="w-full max-w-md mx-auto animate-slide-up">
           {/* Mobile logo */}
           <Link to="/" className="flex items-center gap-2 mb-10 lg:hidden">
             <div className="w-8 h-8 rounded-full bg-botanical-primary flex items-center justify-center">

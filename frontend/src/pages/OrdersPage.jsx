@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchUserOrders } from '../redux/slices/orderSlice';
 import Badge from '../components/ui/Badge';
@@ -66,9 +67,17 @@ const OrdersPage = () => {
                     <p className="font-sans text-xs text-botanical-muted uppercase tracking-wider mb-1">Total</p>
                     <p className="font-serif text-lg font-semibold text-botanical-text">{formatPrice(order.total)}</p>
                   </div>
-                  <div className="flex gap-2 flex-wrap">
+                  <div className="flex gap-2 flex-wrap items-center">
                     <Badge variant={order.paymentStatus}>{order.paymentStatus}</Badge>
                     <Badge variant={order.orderStatus}>{order.orderStatus}</Badge>
+                    {order.orderStatus === 'delivered' && (
+                      <Link
+                        to={`/invoice/${order._id}`}
+                        className="ml-2 px-3 py-1 bg-botanical-surface text-botanical-primary rounded-xl font-sans text-xs font-medium hover:bg-botanical-secondary transition-colors border border-botanical-border"
+                      >
+                        Download Invoice
+                      </Link>
+                    )}
                   </div>
                 </div>
 

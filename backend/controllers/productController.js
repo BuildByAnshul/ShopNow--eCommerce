@@ -174,29 +174,4 @@ const addReview = async (req, res, next) => {
   }
 };
 
-// @desc  Remove review
-// @route DELETE /api/products/:id/reviews/:reviewId
-const removeReview = async (req, res, next) => {
-  try {
-    const product = await Product.findById(req.params.id);
-    if (!product) return res.status(404).json({ message: 'Product not found' });
-
-    const reviewIndex = product.reviews.findIndex(
-      (r) => r._id.toString() === req.params.reviewId
-    );
-
-    if (reviewIndex === -1) {
-      return res.status(404).json({ message: 'Review not found' });
-    }
-
-    product.reviews.splice(reviewIndex, 1);
-    product.updateRating();
-    await product.save();
-
-    res.json(product);
-  } catch (error) {
-    next(error);
-  }
-};
-
-module.exports = { getProducts, getProductById, createProduct, updateProduct, deleteProduct, addReview, removeReview };
+module.exports = { getProducts, getProductById, createProduct, updateProduct, deleteProduct, addReview };
