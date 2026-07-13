@@ -5,7 +5,7 @@ const Product = require('../models/Product');
 // @route POST /api/orders
 const createOrder = async (req, res, next) => {
   try {
-    const { items, address, razorpayOrderId } = req.body;
+    const { items, address, razorpayOrderId, paymentMethod } = req.body;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ message: 'No order items' });
@@ -47,6 +47,7 @@ const createOrder = async (req, res, next) => {
       itemsTotal,
       shippingCost,
       total,
+      paymentMethod: paymentMethod || 'online',
       razorpayOrderId,
     });
 
