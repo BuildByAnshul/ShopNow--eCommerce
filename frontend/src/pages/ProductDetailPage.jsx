@@ -69,7 +69,24 @@ const ProductDetailPage = () => {
   const handleAddToCart = () => {
     addToCart(product, quantity);
     setAdded(true);
-    toast.success(`${quantity} ${product.name} added to cart`);
+    toast.success(`${quantity} ${product.name} added to cart`, {
+      position: 'top-right',
+      style: {
+        marginTop: '64px', // Below the cart icon
+        background: '#ffffff',
+        color: '#1a1f1b',
+        border: '1px solid #e2e8f0',
+        borderRadius: '16px',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+        padding: '12px 16px',
+        fontSize: '14px',
+        fontWeight: '500'
+      },
+      iconTheme: {
+        primary: '#4a6b53', // botanical-primary
+        secondary: '#fff',
+      },
+    });
     setTimeout(() => setAdded(false), 2000);
   };
 
