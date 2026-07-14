@@ -14,6 +14,7 @@ const CartPage = lazy(() => import('./pages/CartPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
 const OrdersPage = lazy(() => import('./pages/OrdersPage'));
 const InvoicePage = lazy(() => import('./pages/InvoicePage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const AdminDashboardPage = lazy(() => import('./pages/admin/DashboardPage'));
@@ -55,7 +56,34 @@ const PageLoader = () => (
 const App = () => {
   return (
     <>
-      <Toaster position="top-right" />
+      <Toaster 
+        position="top-right" 
+        toastOptions={{
+          style: {
+            background: '#ffffff',
+            color: '#1a3627', 
+            fontFamily: 'inherit',
+            fontSize: '14px',
+            fontWeight: '500',
+            borderRadius: '16px',
+            border: '1px solid #e5e7eb',
+            boxShadow: '0 10px 25px -5px rgba(26, 54, 39, 0.1), 0 8px 10px -6px rgba(26, 54, 39, 0.1)',
+            padding: '12px 20px',
+          },
+          success: {
+            iconTheme: {
+              primary: '#2b5a41', // botanical-primary
+              secondary: '#ffffff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#ffffff',
+            },
+          },
+        }}
+      />
       <Suspense fallback={<PageLoader />}>
         <Routes>
         {/* Auth routes — no Navbar/Footer */}
@@ -69,6 +97,7 @@ const App = () => {
         <Route path="/cart" element={<Layout><CartPage /></Layout>} />
 
         {/* Protected user routes */}
+        <Route path="/profile" element={<ProtectedRoute><Layout><ProfilePage /></Layout></ProtectedRoute>} />
         <Route path="/checkout" element={<ProtectedRoute><Layout><CheckoutPage /></Layout></ProtectedRoute>} />
         <Route path="/orders" element={<ProtectedRoute><Layout><OrdersPage /></Layout></ProtectedRoute>} />
         <Route path="/invoice/:id" element={<ProtectedRoute><Layout><InvoicePage /></Layout></ProtectedRoute>} />

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingBag, Menu, X, Leaf, LogOut, LayoutDashboard, Search, X as CloseIcon, ChevronDown } from 'lucide-react';
+import { ShoppingBag, Menu, X, Leaf, LogOut, LayoutDashboard, Search, X as CloseIcon, ChevronDown, User } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useCart } from '../../hooks/useCart';
 import { productService } from '../../services/productService';
@@ -199,7 +199,14 @@ const Navbar = () => {
                       <LayoutDashboard className="w-4 h-4" /> Admin Dashboard
                     </Link>
                   )}
+                  <Link to="/profile"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="flex items-center gap-3 px-5 py-3.5 text-sm text-botanical-text
+                               hover:bg-botanical-surface hover:text-botanical-primary transition-colors">
+                    <User className="w-4 h-4" /> My Profile
+                  </Link>
                   <Link to="/orders"
+                    onClick={() => setUserMenuOpen(false)}
                     className="flex items-center gap-3 px-5 py-3.5 text-sm text-botanical-text
                                hover:bg-botanical-surface hover:text-botanical-primary transition-colors">
                     <ShoppingBag className="w-4 h-4" /> My Orders

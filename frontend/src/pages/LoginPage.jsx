@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
-import { login, clearError } from '../redux/slices/authSlice';
+import { login, googleLogin, clearError, forgotPassword, verifyOTP, resetPassword } from '../redux/slices/authSlice';
+import { useGoogleLogin } from '@react-oauth/google';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import { Leaf, Eye, EyeOff } from 'lucide-react';
@@ -14,6 +16,15 @@ const LoginPage = () => {
 
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPw, setShowPw] = useState(false);
+  
+  // 0: Login View, 1: Enter Email View, 2: Enter OTP View, 3: Enter New Password View
+  const [forgotStep, setForgotStep] = useState(0); 
+  const [resetData, setResetData] = useState({ otp: '', newPassword: '' });
+  
+  // OTP State
+  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
+  const [otpError, setOtpError] = useState('');
+  const otpRefs = useRef([]);
 
   const from = location.state?.from?.pathname || '/';
 
@@ -26,6 +37,75 @@ const LoginPage = () => {
     e.preventDefault();
     dispatch(login(form));
   };
+
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.email) return toast.error('Please enter your email');
+    try {
+      await dispatch(forgotPassword(form.email)).unwrap();
+      toast.success(`OTP sent to ${form.email}`);
+      setForgotStep(2);
+    } catch (err) {
+      toast.error(err || 'Failed to send OTP');
+    }
+  };
+
+  const handleOtpChange = (index, value) => {
+    if (!/^[0-9]*$/.test(value)) return;
+    const newOtp = [...otpDigits];
+    newOtp[index] = value;
+    setOtpDigits(newOtp);
+    setOtpError('');
+
+    if (value && index < 5) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    const otpString = otpDigits.join('');
+    if (otpString.length < 6) return setOtpError('Please enter all 6 digits');
+    try {
+      await dispatch(verifyOTP({ email: form.email, otp: otpString })).unwrap();
+      setResetData({ ...resetData, otp: otpString });
+      setOtpError('');
+      setForgotStep(3);
+    } catch (err) {
+      setOtpError(err || 'Invalid OTP');
+    }
+  };
+
+  const handleResetSubmit = async (e) => {
+    e.preventDefault();
+    if (!resetData.otp || !resetData.newPassword) return toast.error('Please fill all fields');
+    if (resetData.newPassword.length < 6) return toast.error('Password must be at least 6 characters');
+    try {
+      await dispatch(resetPassword({ email: form.email, otp: resetData.otp, newPassword: resetData.newPassword })).unwrap();
+      toast.success('Password reset successfully! Please login.');
+      setForgotStep(0);
+      setResetData({ otp: '', newPassword: '' });
+      setOtpDigits(['', '', '', '', '', '']);
+      setForm({ ...form, password: '' });
+    } catch (err) {
+      toast.error(err || 'Failed to reset password');
+    }
+  };
+
+  const handleGoogleSuccess = (tokenResponse) => {
+    dispatch(googleLogin({ token: tokenResponse.access_token, isAccessToken: true }));
+  };
+
+  const loginWithGoogle = useGoogleLogin({
+    onSuccess: handleGoogleSuccess,
+    onError: () => console.error('Google Login Failed')
+  });
 
   return (
     <div className="min-h-screen flex">
@@ -77,10 +157,13 @@ const LoginPage = () => {
           </Link>
 
           <h2 className="font-serif text-4xl font-semibold text-botanical-text mb-2">
-            Welcome back
+            {forgotStep > 0 ? 'Reset Password' : 'Welcome back'}
           </h2>
           <p className="font-sans text-botanical-muted mb-8">
-            Sign in to continue your botanical journey
+            {forgotStep === 1 ? 'Enter your email to receive an OTP' : 
+             forgotStep === 2 ? 'Enter the 6-digit OTP sent to your email' : 
+             forgotStep === 3 ? 'Create your new password' : 
+             'Sign in to continue your botanical journey'}
           </p>
 
           {error && (
@@ -89,46 +172,183 @@ const LoginPage = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <Input
-              label="Email"
-              id="login-email"
-              type="email"
-              placeholder="you@example.com"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              required
-            />
-            <div className="relative">
+          {forgotStep === 1 ? (
+            <form onSubmit={handleForgotSubmit} className="space-y-5">
               <Input
-                label="Password"
-                id="login-password"
-                type={showPw ? 'text' : 'password'}
-                placeholder="Your password"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                label="Email"
+                id="reset-email"
+                type="email"
+                placeholder="you@example.com"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
                 required
               />
-              <button
-                type="button"
-                onClick={() => setShowPw(!showPw)}
-                className="absolute right-4 top-[calc(50%+6px)] text-botanical-muted hover:text-botanical-text transition-colors"
-              >
-                {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
+              <Button type="submit" loading={loading} variant="primary" className="w-full mt-2">
+                Send OTP
+              </Button>
+              <div className="text-center mt-4">
+                <button
+                  type="button"
+                  onClick={() => setForgotStep(0)}
+                  className="text-sm font-sans font-medium text-botanical-primary hover:underline transition-colors"
+                >
+                  ← Back to Login
+                </button>
+              </div>
+            </form>
+          ) : forgotStep === 2 ? (
+            <form onSubmit={handleVerifyOtp} className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-botanical-text font-sans mb-3">
+                  6-Digit OTP
+                </label>
+                <div className="flex justify-between gap-2">
+                  {otpDigits.map((digit, index) => (
+                    <input
+                      key={index}
+                      ref={(el) => (otpRefs.current[index] = el)}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleOtpChange(index, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                      className={`w-12 h-14 sm:w-14 sm:h-16 text-center text-xl font-semibold rounded-xl border ${
+                        otpError ? 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-200' : 
+                        digit ? 'border-botanical-primary bg-botanical-surface' : 
+                        'border-botanical-border bg-gray-50 focus:border-botanical-primary focus:bg-white'
+                      } outline-none transition-all focus:ring-2 focus:ring-botanical-primary/20 text-botanical-text`}
+                    />
+                  ))}
+                </div>
+                {otpError && (
+                  <p className="mt-3 text-sm text-red-500 font-sans">{otpError}</p>
+                )}
+              </div>
+              <Button type="submit" loading={loading} variant="primary" className="w-full">
+                Verify OTP
+              </Button>
+              <div className="text-center mt-4">
+                <button
+                  type="button"
+                  onClick={() => setForgotStep(0)}
+                  className="text-sm font-sans font-medium text-botanical-primary hover:underline transition-colors"
+                >
+                  Cancel & Back to Login
+                </button>
+              </div>
+            </form>
+          ) : forgotStep === 3 ? (
+            <form onSubmit={handleResetSubmit} className="space-y-5">
+              <div className="relative">
+                <Input
+                  label="New Password"
+                  id="new-password"
+                  type={showPw ? 'text' : 'password'}
+                  placeholder="Min 6 characters"
+                  value={resetData.newPassword}
+                  onChange={(e) => setResetData({ ...resetData, newPassword: e.target.value })}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(!showPw)}
+                  className="absolute right-4 top-[calc(50%+6px)] text-botanical-muted hover:text-botanical-text transition-colors"
+                >
+                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <Button type="submit" loading={loading} variant="primary" className="w-full mt-2">
+                Set New Password
+              </Button>
+              <div className="text-center mt-4">
+                <button
+                  type="button"
+                  onClick={() => setForgotStep(0)}
+                  className="text-sm font-sans font-medium text-botanical-primary hover:underline transition-colors"
+                >
+                  Cancel & Back to Login
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <Input
+                label="Email"
+                id="login-email"
+                type="email"
+                placeholder="you@example.com"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                required
+              />
+              <div className="relative">
+                <Input
+                  label="Password"
+                  id="login-password"
+                  type={showPw ? 'text' : 'password'}
+                  placeholder="Your password"
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(!showPw)}
+                  className="absolute right-4 top-[calc(50%+6px)] text-botanical-muted hover:text-botanical-text transition-colors"
+                >
+                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              
+              <div className="flex justify-end -mt-3 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setForgotStep(1)}
+                  className="text-xs font-sans font-medium text-botanical-primary hover:text-botanical-accent hover:underline transition-colors"
+                >
+                  Forgot password?
+                </button>
+              </div>
 
-            <Button type="submit" loading={loading} variant="primary" className="w-full mt-2">
-              Sign In
-            </Button>
-          </form>
+              <Button type="submit" loading={loading} variant="primary" className="w-full mt-2">
+                Sign In
+              </Button>
+            </form>
+          )}
 
-          <p className="font-sans text-sm text-botanical-muted text-center mt-8">
-            Don't have an account?{' '}
-            <Link to="/register" className="text-botanical-primary font-medium hover:underline">
-              Create one
-            </Link>
-          </p>
+          {forgotStep === 0 && (
+            <>
+              <div className="mt-8 flex items-center justify-between">
+                <span className="w-1/5 border-b border-botanical-border lg:w-1/4"></span>
+                <span className="text-xs text-center text-botanical-muted uppercase tracking-wider font-sans">Or continue with</span>
+                <span className="w-1/5 border-b border-botanical-border lg:w-1/4"></span>
+              </div>
+              
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={() => loginWithGoogle()}
+                  className="w-full flex items-center justify-center gap-3 px-4 py-2.5 border border-botanical-border rounded-xl hover:bg-botanical-surface transition-colors font-sans text-sm font-medium text-botanical-text"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                  </svg>
+                  Continue with Google
+                </button>
+              </div>
+
+              <p className="font-sans text-sm text-botanical-muted text-center mt-8">
+                Don't have an account?{' '}
+                <Link to="/register" className="text-botanical-primary font-medium hover:underline">
+                  Create one
+                </Link>
+              </p>
+            </>
+          )}
         </div>
       </div>
     </div>

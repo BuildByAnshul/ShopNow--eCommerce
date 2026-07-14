@@ -108,7 +108,7 @@ const CheckoutPage = () => {
         orderId,
         key,
         description: 'ShopEase Order',
-        prefill: { name: user?.name, email: user?.email },
+        prefill: { name: user?.name, email: user?.email, contact: address.phone },
       });
 
       // 3. Create order in our DB
