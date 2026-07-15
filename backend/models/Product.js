@@ -43,6 +43,12 @@ const productSchema = new mongoose.Schema(
     rating: { type: Number, default: 0 },
     numReviews: { type: Number, default: 0 },
     featured: { type: Boolean, default: false },
+    details: {
+      storage: { type: String, default: '' },
+      shelfLife: { type: String, default: '' },
+      suitableFor: { type: String, default: '' }
+    },
+    howToUse: [{ type: String }]
   },
   { timestamps: true }
 );

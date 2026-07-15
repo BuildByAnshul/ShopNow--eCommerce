@@ -1,4 +1,11 @@
 const Product = require('../models/Product');
+const cloudinary = require('cloudinary').v2;
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 // Helper function to build smart search query
 const buildSearchQuery = (searchTerm) => {
@@ -122,9 +129,38 @@ const updateProduct = async (req, res, next) => {
 // @route DELETE /api/products/:id
 const deleteProduct = async (req, res, next) => {
   try {
-    const product = await Product.findByIdAndDelete(req.params.id);
+    const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ message: 'Product not found' });
-    res.json({ message: 'Product deleted' });
+
+    const productName = product.name.trim().replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+    const category = product.category.trim().replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+    const folderPath = `products/${category}/${productName}`;
+
+    // 1. Delete images
+    try {
+      await cloudinary.api.delete_resources_by_prefix(`${folderPath}/products_photos`, { resource_type: 'image' });
+      await cloudinary.api.delete_folder(`${folderPath}/products_photos`);
+    } catch (err) {
+      console.log('Warning deleting photos folder:', err.message);
+    }
+
+    // 2. Delete videos
+    try {
+      await cloudinary.api.delete_resources_by_prefix(`${folderPath}/video_folder`, { resource_type: 'video' });
+      await cloudinary.api.delete_folder(`${folderPath}/video_folder`);
+    } catch (err) {
+      console.log('Warning deleting videos folder:', err.message);
+    }
+
+    // 3. Delete parent product folder
+    try {
+      await cloudinary.api.delete_folder(folderPath);
+    } catch (err) {
+      console.log('Warning deleting main product folder:', err.message);
+    }
+
+    await Product.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Product deleted along with Cloudinary assets' });
   } catch (error) {
     next(error);
   }

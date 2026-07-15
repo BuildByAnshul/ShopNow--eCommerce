@@ -148,6 +148,7 @@ const AdminProductsPage = () => {
         setUploadProgress('Uploading main photo...');
         const mainFormData = new FormData();
         mainFormData.append('productName', form.name);
+        mainFormData.append('category', form.category || 'uncategorized');
         mainFormData.append('images', mainPhoto);
         const mainRes = await api.post('/upload/images', mainFormData, {
           headers: { 'Content-Type': 'multipart/form-data' },
@@ -163,6 +164,7 @@ const AdminProductsPage = () => {
         setUploadProgress('Uploading additional photos...');
         const addFormData = new FormData();
         addFormData.append('productName', form.name);
+        addFormData.append('category', form.category || 'uncategorized');
         for (const file of additionalPhotos) {
           addFormData.append('images', file);
         }
@@ -180,6 +182,7 @@ const AdminProductsPage = () => {
         setUploadProgress('Uploading video (this may take a moment)...');
         const vidFormData = new FormData();
         vidFormData.append('productName', form.name);
+        vidFormData.append('category', form.category || 'uncategorized');
         vidFormData.append('video', videoFile);
         const vidRes = await api.post('/upload/video', vidFormData, {
           headers: { 'Content-Type': 'multipart/form-data' },

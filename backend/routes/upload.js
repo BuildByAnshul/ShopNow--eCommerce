@@ -16,11 +16,14 @@ const imageStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: async (req, file) => {
     const productName = req.body.productName
-      ? req.body.productName.trim().replace(/\s+/g, '_').toLowerCase()
+      ? req.body.productName.trim().replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase()
+      : 'uncategorized';
+    const category = req.body.category
+      ? req.body.category.trim().replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase()
       : 'uncategorized';
 
     return {
-      folder: `product/${productName}`,
+      folder: `products/${category}/${productName}/products_photos`,
       allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
     };
   },
@@ -31,11 +34,14 @@ const videoStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: async (req, file) => {
     const productName = req.body.productName
-      ? req.body.productName.trim().replace(/\s+/g, '_').toLowerCase()
+      ? req.body.productName.trim().replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase()
+      : 'uncategorized';
+    const category = req.body.category
+      ? req.body.category.trim().replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase()
       : 'uncategorized';
 
     return {
-      folder: `product/${productName}/videos`,
+      folder: `products/${category}/${productName}/video_folder`,
       resource_type: 'video',
       allowed_formats: ['mp4', 'webm', 'mov', 'avi'],
     };

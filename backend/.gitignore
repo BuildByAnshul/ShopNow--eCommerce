@@ -1,4 +1,6 @@
 node_modules/
 .env
 dist/
+dummy.js
+dummy_template.txt
 *.log
