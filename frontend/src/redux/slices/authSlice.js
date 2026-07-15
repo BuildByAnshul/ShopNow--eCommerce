@@ -127,7 +127,25 @@ const authSlice = createSlice({
           state.user.addresses = action.payload;
           localStorage.setItem('shopease_user', JSON.stringify(state.user));
         }
-      });
+      })
+      .addCase(forgotPassword.pending, handlePending)
+      .addCase(forgotPassword.fulfilled, (state) => {
+        state.loading = false;
+        state.error = null;
+      })
+      .addCase(forgotPassword.rejected, handleRejected)
+      .addCase(verifyOTP.pending, handlePending)
+      .addCase(verifyOTP.fulfilled, (state) => {
+        state.loading = false;
+        state.error = null;
+      })
+      .addCase(verifyOTP.rejected, handleRejected)
+      .addCase(resetPassword.pending, handlePending)
+      .addCase(resetPassword.fulfilled, (state) => {
+        state.loading = false;
+        state.error = null;
+      })
+      .addCase(resetPassword.rejected, handleRejected);
   },
 });
 
