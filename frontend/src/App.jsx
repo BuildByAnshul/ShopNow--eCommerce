@@ -8,6 +8,7 @@ import { useAuth } from './hooks/useAuth';
 
 // Lazy-loaded pages---------     ---------test
 const HomePage = lazy(() => import('./pages/HomePage'));
+const AboutPage = lazy(() => import('./pages/AboutPage'));
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
 const CartPage = lazy(() => import('./pages/CartPage'));
@@ -92,6 +93,7 @@ const App = () => {
 
         {/* Public routes */}
         <Route path="/" element={<Layout><HomePage /></Layout>} />
+        <Route path="/about" element={<Layout><AboutPage /></Layout>} />
         <Route path="/products" element={<Layout><ProductsPage /></Layout>} />
         <Route path="/products/:id" element={<Layout><ProductDetailPage /></Layout>} />
         <Route path="/cart" element={<Layout><CartPage /></Layout>} />
