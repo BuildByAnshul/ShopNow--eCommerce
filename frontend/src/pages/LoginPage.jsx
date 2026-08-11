@@ -33,9 +33,14 @@ const LoginPage = () => {
     return () => dispatch(clearError());
   }, [isAuthenticated, navigate, from, dispatch]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    dispatch(login(form));
+    try {
+      await dispatch(login(form)).unwrap();
+      toast.success('Login successful!');
+    } catch (err) {
+      toast.error(err || 'Login failed');
+    }
   };
 
   const handleForgotSubmit = async (e) => {
@@ -98,13 +103,16 @@ const LoginPage = () => {
     }
   };
 
-  const handleGoogleSuccess = (tokenResponse) => {
-    dispatch(googleLogin({ token: tokenResponse.access_token, isAccessToken: true }));
-  };
-
   const loginWithGoogle = useGoogleLogin({
-    onSuccess: handleGoogleSuccess,
-    onError: () => console.error('Google Login Failed')
+    onSuccess: async (tokenResponse) => {
+      try {
+        await dispatch(googleLogin({ token: tokenResponse.access_token, isAccessToken: true })).unwrap();
+        toast.success('Login successful!');
+      } catch (err) {
+        toast.error(err || 'Login failed');
+      }
+    },
+    onError: () => toast.error('Google Login Failed'),
   });
 
   return (

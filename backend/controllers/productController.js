@@ -48,12 +48,30 @@ const buildSearchQuery = (searchTerm) => {
 // @route GET /api/products
 const getProducts = async (req, res, next) => {
   try {
-    const { category, search, minPrice, maxPrice, page = 1, limit = 12, featured } = req.query;
+    const { category, search, minPrice, maxPrice, page = 1, limit = 12, featured, skinType, sale, offersOnly } = req.query;
 
     let query = {};
 
     if (category) query.category = category;
     if (featured === 'true') query.featured = true;
+    if (skinType) query['details.suitableFor'] = { $regex: skinType, $options: 'i' };
+    
+    if (sale === 'true') {
+      query['offer.discountPercentage'] = { $gt: 0 };
+      query['offer.expiresAt'] = { $gt: new Date() };
+      // For sale, we want active sales only, so startsAt must be in the past or not exist
+      query['$or'] = [
+        { 'offer.startsAt': { $lte: new Date() } },
+        { 'offer.startsAt': { $exists: false } },
+        { 'offer.startsAt': null }
+      ];
+    }
+    
+    if (offersOnly === 'true') {
+      query['offer.discountPercentage'] = { $gt: 0 };
+      query['offer.expiresAt'] = { $gt: new Date() };
+      // No startsAt check because we want upcoming too
+    }
     
     // Use smart search query
     if (search) {
@@ -188,16 +206,16 @@ const addReview = async (req, res, next) => {
       return res.status(400).json({ message: 'You have already reviewed this product' });
     }
 
-    // Verify user has purchased this product
+    // Verify user has purchased this product and it is delivered
     const Order = require('../models/Order');
     const hasPurchased = await Order.findOne({
       user: req.user._id,
       'items.product': req.params.id,
-      paymentStatus: 'paid'
+      orderStatus: 'delivered'
     });
 
     if (!hasPurchased) {
-      return res.status(403).json({ message: 'You can only review products you have purchased' });
+      return res.status(403).json({ message: 'You can only review products after they are delivered' });
     }
 
     product.reviews.push({ user: req.user._id, name: req.user.name, rating: Number(rating), comment });

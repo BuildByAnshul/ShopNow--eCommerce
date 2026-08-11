@@ -72,6 +72,8 @@ const productSlice = createSlice({
       search: '',
       minPrice: '',
       maxPrice: '',
+      skinType: '',
+      sale: '',
     },
   },
   reducers: {
@@ -79,7 +81,7 @@ const productSlice = createSlice({
       state.filters = { ...state.filters, ...action.payload };
     },
     clearFilters: (state) => {
-      state.filters = { category: '', search: '', minPrice: '', maxPrice: '' };
+      state.filters = { category: '', search: '', minPrice: '', maxPrice: '', skinType: '', sale: '' };
     },
     clearCurrentProduct: (state) => {
       state.currentProduct = null;

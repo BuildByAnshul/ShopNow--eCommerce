@@ -15,7 +15,8 @@ const statusMap = {
 };
 
 const Badge = ({ children, variant, className = '' }) => {
-  const cls = statusMap[variant] || statusMap[children?.toLowerCase()] || 'badge-primary';
+  const childString = typeof children === 'string' ? children.toLowerCase() : '';
+  const cls = statusMap[variant] || statusMap[childString] || 'badge-primary';
   return (
     <span className={`${cls} ${className}`}>{children}</span>
   );

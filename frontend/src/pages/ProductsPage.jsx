@@ -5,7 +5,7 @@ import { fetchProducts } from '../redux/slices/productSlice';
 import { setFilters, clearFilters } from '../redux/slices/productSlice';
 import ProductGrid from '../components/product/ProductGrid';
 import ProductFilters from '../components/product/ProductFilters';
-import { SlidersHorizontal, X } from 'lucide-react';
+import { SlidersHorizontal, X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const ProductsPage = () => {
   const dispatch = useDispatch();
@@ -19,7 +19,8 @@ const ProductsPage = () => {
     window.scrollTo(0, 0);
     const category = searchParams.get('category') || '';
     const search = searchParams.get('search') || '';
-    dispatch(setFilters({ category, search }));
+    const sale = searchParams.get('sale') || '';
+    dispatch(setFilters({ category, search, sale }));
   }, [searchParams]);
 
   useEffect(() => {
@@ -30,6 +31,7 @@ const ProductsPage = () => {
         limit: 12,
       })
     );
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [filters, currentPage, dispatch]);
 
   const handleFilterChange = (updated) => {
@@ -40,6 +42,15 @@ const ProductsPage = () => {
   const handleClear = () => {
     dispatch(clearFilters());
     setCurrentPage(1);
+  };
+
+  const getPaginationGroup = () => {
+    if (pages <= 5) return Array.from({ length: pages }, (_, i) => i + 1);
+    
+    if (currentPage <= 3) return [1, 2, 3, 4, '...', pages];
+    if (currentPage >= pages - 2) return [1, '...', pages - 3, pages - 2, pages - 1, pages];
+    
+    return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', pages];
   };
 
   return (
@@ -74,7 +85,7 @@ const ProductsPage = () => {
         <div className="flex gap-12">
           {/* Desktop Filters */}
           <aside className="hidden lg:block w-64 flex-shrink-0">
-            <div className="sticky top-28">
+            <div className="sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto custom-scrollbar pr-2">
               <ProductFilters
                 filters={filters}
                 onFilterChange={handleFilterChange}
@@ -89,19 +100,39 @@ const ProductsPage = () => {
 
             {/* Pagination */}
             {pages > 1 && (
-              <div className="flex justify-center gap-2 mt-16">
-                {[...Array(pages)].map((_, i) => (
+              <div className="flex justify-center items-center gap-2 mt-16">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="w-10 h-10 flex items-center justify-center rounded-full text-botanical-text disabled:opacity-30 disabled:cursor-not-allowed hover:bg-botanical-surface transition-colors"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                
+                {getPaginationGroup().map((item, index) => (
                   <button
-                    key={i}
-                    onClick={() => setCurrentPage(i + 1)}
-                    className={`w-10 h-10 rounded-full text-sm font-sans font-medium transition-all duration-300 ${currentPage === i + 1
+                    key={index}
+                    onClick={() => item !== '...' && setCurrentPage(item)}
+                    disabled={item === '...'}
+                    className={`w-10 h-10 rounded-full text-sm font-sans font-medium transition-all duration-300 ${
+                      item === '...' 
+                        ? 'cursor-default text-botanical-muted'
+                        : currentPage === item
                         ? 'bg-botanical-text text-white shadow-soft'
                         : 'border border-botanical-border text-botanical-text hover:border-botanical-primary hover:text-botanical-primary'
-                      }`}
+                    }`}
                   >
-                    {i + 1}
+                    {item}
                   </button>
                 ))}
+
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, pages))}
+                  disabled={currentPage === pages}
+                  className="w-10 h-10 flex items-center justify-center rounded-full text-botanical-text disabled:opacity-30 disabled:cursor-not-allowed hover:bg-botanical-surface transition-colors"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
               </div>
             )}
           </div>

@@ -21,4 +21,8 @@ export const orderService = {
     const res = await api.put(`/orders/${id}`, data);
     return res.data;
   },
+  deleteOrder: async (id) => {
+    const res = await api.delete(`/orders/${id}`);
+    return res.data;
+  }
 };

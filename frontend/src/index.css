@@ -176,7 +176,7 @@
 
   /* ── Neon-underline link animation (for hover) ── */
   .nav-link {
-    @apply relative font-sans text-sm font-medium text-botanical-text transition-colors duration-300 hover:text-botanical-accent;
+    @apply relative font-sans text-sm font-medium transition-colors duration-300 hover:text-botanical-accent;
   }
 
   .nav-link::after {

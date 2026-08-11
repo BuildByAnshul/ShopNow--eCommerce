@@ -3,6 +3,7 @@ import { Search, SlidersHorizontal, X } from 'lucide-react';
 import Button from '../ui/Button';
 
 const CATEGORIES = ['skincare', 'haircare', 'wellness', 'aromatherapy', 'supplements', 'home'];
+const SKIN_TYPES = ['Oily', 'Dry', 'Mature', 'Combination', 'Sensitive', 'All skin types'];
 
 const ProductFilters = ({ filters, onFilterChange, onClear }) => {
   const [localFilters, setLocalFilters] = useState(filters);
@@ -36,13 +37,16 @@ const ProductFilters = ({ filters, onFilterChange, onClear }) => {
       <div>
         <p className="input-label mb-3">Search</p>
         <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-botanical-muted" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-botanical-muted" />
           <input
             type="text"
             placeholder="Search products…"
             value={localFilters.search || ''}
             onChange={(e) => setLocalFilters({ ...localFilters, search: e.target.value })}
-            className="input-field pl-11"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleApply();
+            }}
+            className="w-full bg-white border border-botanical-border rounded-xl py-2.5 pl-10 pr-4 text-sm font-sans text-botanical-text placeholder-botanical-muted focus:outline-none focus:ring-2 focus:ring-botanical-primary/30 focus:border-botanical-primary transition-all shadow-sm"
             id="product-search"
           />
         </div>
@@ -73,7 +77,7 @@ const ProductFilters = ({ filters, onFilterChange, onClear }) => {
                 name="category"
                 value={cat}
                 checked={localFilters.category === cat}
-                onChange={() => setLocalFilters({ ...localFilters, category: cat })}
+                onChange={() => setLocalFilters({ ...localFilters, category: cat, ...(cat !== 'skincare' ? { skinType: '' } : {}) })}
                 className="accent-botanical-primary"
                 id={`cat-${cat}`}
               />
@@ -84,6 +88,43 @@ const ProductFilters = ({ filters, onFilterChange, onClear }) => {
           ))}
         </div>
       </div>
+
+      {/* Skin Type (Only for Skincare or All) */}
+      {(localFilters.category === '' || localFilters.category === 'skincare') && (
+        <div>
+          <p className="input-label mb-3">Skin Type</p>
+          <div className="space-y-2">
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <input
+                type="radio"
+                name="skinType"
+                value=""
+                checked={localFilters.skinType === '' || !localFilters.skinType}
+                onChange={() => setLocalFilters({ ...localFilters, skinType: '' })}
+                className="accent-botanical-primary"
+              />
+              <span className="font-sans text-sm text-botanical-text group-hover:text-botanical-primary transition-colors capitalize">
+                Any
+              </span>
+            </label>
+            {SKIN_TYPES.map((type) => (
+              <label key={type} className="flex items-center gap-3 cursor-pointer group">
+                <input
+                  type="radio"
+                  name="skinType"
+                  value={type}
+                  checked={localFilters.skinType === type}
+                  onChange={() => setLocalFilters({ ...localFilters, skinType: type })}
+                  className="accent-botanical-primary"
+                />
+                <span className="font-sans text-sm text-botanical-text group-hover:text-botanical-primary transition-colors capitalize">
+                  {type}
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Price Range */}
       <div>

@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import Spinner from './components/ui/Spinner';
+import Chatbot from './components/ui/Chatbot';
 import { useAuth } from './hooks/useAuth';
 
 // Lazy-loaded pages---------     ---------test
@@ -20,7 +21,10 @@ const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const AdminDashboardPage = lazy(() => import('./pages/admin/DashboardPage'));
 const AdminProductsPage = lazy(() => import('./pages/admin/ProductsAdminPage'));
+const AdminOffersPage = lazy(() => import('./pages/admin/OffersAdminPage'));
 const AdminOrdersPage = lazy(() => import('./pages/admin/OrdersAdminPage'));
+const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage'));
+const OffersPage = lazy(() => import('./pages/OffersPage'));
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }) => {
@@ -36,13 +40,13 @@ const AdminRoute = ({ children }) => {
   return children;
 };
 
-// Layout wrapper (Navbar + Footer)
 const Layout = ({ children }) => (
-  <>
+  <div className="flex flex-col min-h-screen">
     <Navbar />
-    <main>{children}</main>
+    <main className="flex-1">{children}</main>
     <Footer />
-  </>
+    <Chatbot />
+  </div>
 );
 
 // Full-screen layout (no footer) for auth pages
@@ -96,6 +100,7 @@ const App = () => {
         <Route path="/about" element={<Layout><AboutPage /></Layout>} />
         <Route path="/products" element={<Layout><ProductsPage /></Layout>} />
         <Route path="/products/:id" element={<Layout><ProductDetailPage /></Layout>} />
+        <Route path="/offers" element={<Layout><OffersPage /></Layout>} />
         <Route path="/cart" element={<Layout><CartPage /></Layout>} />
 
         {/* Protected user routes */}
@@ -107,7 +112,9 @@ const App = () => {
         {/* Admin routes */}
         <Route path="/admin" element={<AdminRoute><Layout><AdminDashboardPage /></Layout></AdminRoute>} />
         <Route path="/admin/products" element={<AdminRoute><Layout><AdminProductsPage /></Layout></AdminRoute>} />
+        <Route path="/admin/offers" element={<AdminRoute><Layout><AdminOffersPage /></Layout></AdminRoute>} />
         <Route path="/admin/orders" element={<AdminRoute><Layout><AdminOrdersPage /></Layout></AdminRoute>} />
+        <Route path="/admin/users" element={<AdminRoute><Layout><AdminUsersPage /></Layout></AdminRoute>} />
 
         {/* 404 */}
         <Route path="*" element={<Navigate to="/" replace />} />

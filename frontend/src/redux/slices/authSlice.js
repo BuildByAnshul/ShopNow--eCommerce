@@ -12,6 +12,15 @@ export const register = createAsyncThunk('auth/register', async (data, { rejectW
   }
 });
 
+export const verifyEmail = createAsyncThunk('auth/verifyEmail', async (data, { rejectWithValue }) => {
+  try {
+    const res = await authService.verifyEmail(data);
+    return res;
+  } catch (err) {
+    return rejectWithValue(err.response?.data?.message || 'Verification failed');
+  }
+});
+
 export const login = createAsyncThunk('auth/login', async (data, { rejectWithValue }) => {
   try {
     const res = await authService.login(data);
@@ -111,8 +120,14 @@ const authSlice = createSlice({
 
     builder
       .addCase(register.pending, handlePending)
-      .addCase(register.fulfilled, handleFulfilled)
+      .addCase(register.fulfilled, (state) => {
+        state.loading = false;
+        state.error = null;
+      })
       .addCase(register.rejected, handleRejected)
+      .addCase(verifyEmail.pending, handlePending)
+      .addCase(verifyEmail.fulfilled, handleFulfilled)
+      .addCase(verifyEmail.rejected, handleRejected)
       .addCase(login.pending, handlePending)
       .addCase(login.fulfilled, handleFulfilled)
       .addCase(login.rejected, handleRejected)

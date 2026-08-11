@@ -1,25 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { register, googleLogin, clearError } from '../redux/slices/authSlice';
+import { register, verifyEmail, googleLogin, clearError } from '../redux/slices/authSlice';
 import { useGoogleLogin } from '@react-oauth/google';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
-import { Leaf, Eye, EyeOff } from 'lucide-react';
+import { Leaf, Eye, EyeOff, Mail } from 'lucide-react';
 
 const RegisterPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { isAuthenticated, loading, error } = useSelector((s) => s.auth);
 
+  const [step, setStep] = useState('register'); // 'register' or 'otp'
   const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [otp, setOtp] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [errors, setErrors] = useState({});
+  const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => {
     if (isAuthenticated) navigate('/');
     return () => dispatch(clearError());
-  }, [isAuthenticated]);
+  }, [isAuthenticated, navigate, dispatch]);
 
   const validate = () => {
     const errs = {};
@@ -30,18 +33,46 @@ const RegisterPage = () => {
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    if (validate()) dispatch(register(form));
+    if (validate()) {
+      const res = await dispatch(register(form));
+      if (res.meta.requestStatus === 'fulfilled') {
+        setSuccessMsg(res.payload.message || 'OTP sent to your email.');
+        toast.success('OTP sent to your email.');
+        setStep('otp');
+        dispatch(clearError());
+      } else {
+        toast.error(res.payload || 'Registration failed');
+      }
+    }
   };
 
-  const handleGoogleSuccess = (tokenResponse) => {
-    dispatch(googleLogin({ token: tokenResponse.access_token, isAccessToken: true }));
+  const handleOtpSubmit = async (e) => {
+    e.preventDefault();
+    if (!otp.trim() || otp.length !== 6) {
+      setErrors({ otp: 'Please enter a valid 6-digit OTP' });
+      return;
+    }
+    const res = await dispatch(verifyEmail({ email: form.email, otp }));
+    if (res.meta.requestStatus === 'fulfilled') {
+      toast.success('Sign up successful!');
+      // Automatic redirection happens via useEffect
+    } else {
+      toast.error(res.payload || 'Verification failed');
+    }
   };
 
   const loginWithGoogle = useGoogleLogin({
-    onSuccess: handleGoogleSuccess,
-    onError: () => console.error('Google Sign Up Failed')
+    onSuccess: async (tokenResponse) => {
+      try {
+        await dispatch(googleLogin({ token: tokenResponse.access_token, isAccessToken: true })).unwrap();
+        toast.success('Sign up successful!');
+      } catch (err) {
+        toast.error(err || 'Google Sign Up failed');
+      }
+    },
+    onError: () => toast.error('Google Sign Up Failed')
   });
 
   return (
@@ -90,92 +121,152 @@ const RegisterPage = () => {
             <span className="font-serif text-xl font-semibold text-botanical-text">ShopEase</span>
           </Link>
 
-          <h2 className="font-serif text-4xl font-semibold text-botanical-text mb-2">
-            Create account
-          </h2>
-          <p className="font-sans text-botanical-muted mb-8">
-            Join the botanical wellness community
-          </p>
+          {step === 'register' ? (
+            <>
+              <h2 className="font-serif text-4xl font-semibold text-botanical-text mb-2">
+                Create account
+              </h2>
+              <p className="font-sans text-botanical-muted mb-8">
+                Join the botanical wellness community
+              </p>
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 rounded-2xl px-4 py-3 mb-6 text-sm font-sans">
-              {error}
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-600 rounded-2xl px-4 py-3 mb-6 text-sm font-sans">
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleRegisterSubmit} className="space-y-5">
+                <Input
+                  label="Full Name"
+                  id="reg-name"
+                  placeholder="Jane Doe"
+                  value={form.name}
+                  error={errors.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  required
+                />
+                <Input
+                  label="Email"
+                  id="reg-email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={form.email}
+                  error={errors.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  required
+                />
+                <div className="relative">
+                  <Input
+                    label="Password"
+                    id="reg-password"
+                    type={showPw ? 'text' : 'password'}
+                    placeholder="Min. 6 characters"
+                    value={form.password}
+                    error={errors.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(!showPw)}
+                    className="absolute right-4 top-[calc(50%+6px)] text-botanical-muted hover:text-botanical-text transition-colors"
+                  >
+                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+
+                <Button type="submit" loading={loading} variant="primary" className="w-full mt-2">
+                  Create Account
+                </Button>
+              </form>
+
+              <div className="mt-8 flex items-center justify-between">
+                <span className="w-1/5 border-b border-botanical-border lg:w-1/4"></span>
+                <span className="text-xs text-center text-botanical-muted uppercase tracking-wider font-sans">Or continue with</span>
+                <span className="w-1/5 border-b border-botanical-border lg:w-1/4"></span>
+              </div>
+              
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={() => loginWithGoogle()}
+                  className="w-full flex items-center justify-center gap-3 px-4 py-2.5 border border-botanical-border rounded-xl hover:bg-botanical-surface transition-colors font-sans text-sm font-medium text-botanical-text"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                  </svg>
+                  Continue with Google
+                </button>
+              </div>
+
+              <p className="font-sans text-sm text-botanical-muted text-center mt-8">
+                Already have an account?{' '}
+                <Link to="/login" className="text-botanical-primary font-medium hover:underline">
+                  Sign in
+                </Link>
+              </p>
+            </>
+          ) : (
+            <div className="animate-fade-in text-center">
+              <div className="w-16 h-16 bg-botanical-primary/10 text-botanical-primary rounded-full flex items-center justify-center mx-auto mb-6">
+                <Mail className="w-8 h-8" />
+              </div>
+              <h2 className="font-serif text-3xl font-semibold text-botanical-text mb-2">
+                Verify Email
+              </h2>
+              <p className="font-sans text-botanical-muted mb-8">
+                We've sent a 6-digit OTP to <strong className="text-botanical-text">{form.email}</strong>.
+              </p>
+
+              {successMsg && (
+                <div className="bg-green-50 border border-green-200 text-green-700 rounded-2xl px-4 py-3 mb-6 text-sm font-sans text-left">
+                  {successMsg}
+                </div>
+              )}
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-600 rounded-2xl px-4 py-3 mb-6 text-sm font-sans text-left">
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleOtpSubmit} className="space-y-5 text-left">
+                <Input
+                  label="Enter OTP"
+                  id="reg-otp"
+                  type="text"
+                  placeholder="123456"
+                  value={otp}
+                  error={errors.otp}
+                  onChange={(e) => {
+                    setOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
+                    setErrors({ ...errors, otp: '' });
+                  }}
+                  required
+                  maxLength={6}
+                />
+                
+                <Button type="submit" loading={loading} variant="primary" className="w-full mt-2">
+                  Verify & Create Account
+                </Button>
+              </form>
+
+              <p className="font-sans text-sm text-botanical-muted text-center mt-8">
+                Didn't receive the code?{' '}
+                <button 
+                  onClick={handleRegisterSubmit} 
+                  disabled={loading}
+                  className="text-botanical-primary font-medium hover:underline disabled:opacity-50"
+                >
+                  Resend OTP
+                </button>
+              </p>
             </div>
           )}
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <Input
-              label="Full Name"
-              id="reg-name"
-              placeholder="Jane Doe"
-              value={form.name}
-              error={errors.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              required
-            />
-            <Input
-              label="Email"
-              id="reg-email"
-              type="email"
-              placeholder="you@example.com"
-              value={form.email}
-              error={errors.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              required
-            />
-            <div className="relative">
-              <Input
-                label="Password"
-                id="reg-password"
-                type={showPw ? 'text' : 'password'}
-                placeholder="Min. 6 characters"
-                value={form.password}
-                error={errors.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPw(!showPw)}
-                className="absolute right-4 top-[calc(50%+6px)] text-botanical-muted hover:text-botanical-text transition-colors"
-              >
-                {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-
-            <Button type="submit" loading={loading} variant="primary" className="w-full mt-2">
-              Create Account
-            </Button>
-          </form>
-
-          <div className="mt-8 flex items-center justify-between">
-            <span className="w-1/5 border-b border-botanical-border lg:w-1/4"></span>
-            <span className="text-xs text-center text-botanical-muted uppercase tracking-wider font-sans">Or continue with</span>
-            <span className="w-1/5 border-b border-botanical-border lg:w-1/4"></span>
-          </div>
-          
-          <div className="mt-6">
-            <button
-              type="button"
-              onClick={() => loginWithGoogle()}
-              className="w-full flex items-center justify-center gap-3 px-4 py-2.5 border border-botanical-border rounded-xl hover:bg-botanical-surface transition-colors font-sans text-sm font-medium text-botanical-text"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-              </svg>
-              Continue with Google
-            </button>
-          </div>
-
-          <p className="font-sans text-sm text-botanical-muted text-center mt-8">
-            Already have an account?{' '}
-            <Link to="/login" className="text-botanical-primary font-medium hover:underline">
-              Sign in
-            </Link>
-          </p>
         </div>
       </div>
     </div>

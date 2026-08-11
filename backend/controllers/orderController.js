@@ -5,7 +5,7 @@ const Product = require('../models/Product');
 // @route POST /api/orders
 const createOrder = async (req, res, next) => {
   try {
-    const { items, address, razorpayOrderId } = req.body;
+    const { items, address, razorpayOrderId, paymentMethod } = req.body;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ message: 'No order items' });
@@ -22,15 +22,24 @@ const createOrder = async (req, res, next) => {
         return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
       }
 
+      const hasActiveOffer = product.offer && 
+        product.offer.discountPercentage > 0 && 
+        product.offer.expiresAt && 
+        new Date(product.offer.expiresAt) > new Date() &&
+        (!product.offer.startsAt || new Date(product.offer.startsAt) <= new Date());
+      const actualPrice = hasActiveOffer 
+        ? product.price - (product.price * product.offer.discountPercentage / 100)
+        : product.price;
+
       orderItems.push({
         product: product._id,
         name: product.name,
         image: product.images[0] || '',
-        price: product.price,
+        price: actualPrice,
         quantity: item.quantity,
       });
 
-      itemsTotal += product.price * item.quantity;
+      itemsTotal += actualPrice * item.quantity;
 
       // Reduce stock
       product.stock -= item.quantity;
@@ -47,6 +56,7 @@ const createOrder = async (req, res, next) => {
       itemsTotal,
       shippingCost,
       total,
+      paymentMethod,
       razorpayOrderId,
     });
 
@@ -106,6 +116,17 @@ const updateOrderStatus = async (req, res, next) => {
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
+    const finalPaymentStatus = paymentStatus || order.paymentStatus;
+    const finalOrderStatus = orderStatus || order.orderStatus;
+
+    if (
+      order.paymentMethod === 'cod' &&
+      finalOrderStatus === 'delivered' &&
+      finalPaymentStatus !== 'paid'
+    ) {
+      return res.status(400).json({ message: 'COD orders must be marked as PAID before or upon delivery' });
+    }
+
     if (orderStatus) order.orderStatus = orderStatus;
     if (paymentStatus) order.paymentStatus = paymentStatus;
 
@@ -132,4 +153,24 @@ const checkPurchase = async (req, res, next) => {
   }
 };
 
-module.exports = { createOrder, getUserOrders, getOrderById, getAllOrders, updateOrderStatus, checkPurchase };
+// @desc  Delete order (admin)
+// @route DELETE /api/orders/:id
+const deleteOrder = async (req, res, next) => {
+  try {
+    const order = await Order.findByIdAndDelete(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    res.json({ message: 'Order removed' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  createOrder,
+  getUserOrders,
+  getOrderById,
+  getAllOrders,
+  updateOrderStatus,
+  checkPurchase,
+  deleteOrder,
+};

@@ -14,7 +14,7 @@ const CATEGORIES = ['skincare', 'haircare', 'wellness', 'aromatherapy', 'supplem
 const emptyForm = {
   name: '', description: '', price: '', category: 'skincare',
   stock: '', featured: false,
-  storage: '', shelfLife: '', suitableFor: '', howToUse: '',
+  storage: '', shelfLife: '', suitableFor: '', howToUse: ''
 };
 
 const formatPrice = (price) =>
@@ -73,7 +73,7 @@ const AdminProductsPage = () => {
       storage: product.details?.storage || '',
       shelfLife: product.details?.shelfLife || '',
       suitableFor: product.details?.suitableFor || '',
-      howToUse: product.howToUse?.join('\n') || '',
+      howToUse: product.howToUse?.join('\n') || ''
     });
     resetFileStates();
     // Show existing main image as preview
@@ -205,7 +205,7 @@ const AdminProductsPage = () => {
           shelfLife: form.shelfLife,
           suitableFor: form.suitableFor,
         },
-        howToUse: form.howToUse.split('\n').filter(s => s.trim() !== ''),
+        howToUse: form.howToUse.split('\n').filter(s => s.trim() !== '')
       };
 
       if (selectedProduct) {
@@ -326,6 +326,7 @@ const AdminProductsPage = () => {
         onClose={() => setModalOpen(false)}
         title={selectedProduct ? 'Edit Product' : 'Add New Product'}
         maxWidth="max-w-2xl"
+        disableOutsideClick={true}
       >
         <form onSubmit={handleSave} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -348,7 +349,8 @@ const AdminProductsPage = () => {
             <Input label="Price (₹)" id="prod-price" type="number" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required />
             <Input label="Stock" id="prod-stock" type="number" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} required />
             
-            <div className="sm:col-span-2 border-t border-botanical-border pt-4 mt-2">
+            {/* Details Section */}
+            <div className="sm:col-span-2 pt-4 border-t border-botanical-border">
               <h3 className="font-serif text-lg font-semibold text-botanical-text mb-4">Product Details & Usage</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input label="Storage Instructions" id="prod-storage" value={form.storage} onChange={(e) => setForm({ ...form, storage: e.target.value })} placeholder="e.g. Cool & Dry Place" />
@@ -371,6 +373,16 @@ const AdminProductsPage = () => {
                 </div>
               </div>
             </div>
+
+            <div className="sm:col-span-2 border-t border-botanical-border pt-4 mt-2">
+              <h3 className="font-serif text-lg font-semibold text-botanical-text mb-4">Time-Limited Offer</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input label="Discount Percentage (%)" id="prod-discount" type="number" min="0" max="100" value={form.discountPercentage} onChange={(e) => setForm({ ...form, discountPercentage: e.target.value })} placeholder="e.g. 20" />
+                <Input label="Offer Starts At" id="prod-starts" type="datetime-local" value={form.offerStartsAt} onChange={(e) => setForm({ ...form, offerStartsAt: e.target.value })} />
+                <Input label="Offer Expires At" id="prod-expires" type="datetime-local" value={form.offerExpiresAt} onChange={(e) => setForm({ ...form, offerExpiresAt: e.target.value })} />
+              </div>
+            </div>
+
             <div className="sm:col-span-2">
               <label className="input-label">Category</label>
               <div className="relative">

@@ -48,7 +48,16 @@ const productSchema = new mongoose.Schema(
       shelfLife: { type: String, default: '' },
       suitableFor: { type: String, default: '' }
     },
-    howToUse: [{ type: String }]
+    howToUse: [{ type: String }],
+    embedding: {
+      type: [Number],
+      select: false // Avoid sending large vectors to frontend
+    },
+    offer: {
+      discountPercentage: { type: Number, min: 0, max: 100, default: 0 },
+      startsAt: { type: Date },
+      expiresAt: { type: Date }
+    }
   },
   { timestamps: true }
 );

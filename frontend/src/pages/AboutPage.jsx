@@ -26,7 +26,7 @@ const AboutPage = () => {
 
         <div className="relative h-64 md:h-96 rounded-3xl overflow-hidden shadow-soft-lg mb-20 animate-fade-in">
           <img
-            src="https://images.unsplash.com/photo-1611078589088-7517c66d11f7?w=1200&q=80"
+            src="https://images.unsplash.com/photo-1612817288484-6f916006741a?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
             alt="Botanical herbs and ingredients"
             className="w-full h-full object-cover"
           />

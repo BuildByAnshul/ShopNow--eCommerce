@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ShoppingBag, Star } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -10,11 +10,21 @@ const formatPrice = (price) =>
 
 const ProductCard = ({ product }) => {
   const { addToCart } = useCart();
+  const [added, setAdded] = useState(false);
+  
+  const now = new Date();
+  const hasActiveOffer = product.offer && product.offer.discountPercentage > 0 && product.offer.expiresAt && new Date(product.offer.expiresAt) > now && (!product.offer.startsAt || new Date(product.offer.startsAt) <= now);
+  const isUpcomingOffer = product.offer && product.offer.discountPercentage > 0 && product.offer.startsAt && new Date(product.offer.startsAt) > now;
+
+  const discountedPrice = hasActiveOffer 
+    ? product.price - (product.price * product.offer.discountPercentage / 100)
+    : product.price;
 
   const handleAddToCart = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    addToCart(product, 1);
+    addToCart({ ...product, price: discountedPrice }, 1);
+    setAdded(true);
     toast.success(`${product.name} added to cart`, {
       position: 'top-right',
       style: {
@@ -33,6 +43,7 @@ const ProductCard = ({ product }) => {
         secondary: '#fff',
       },
     });
+    setTimeout(() => setAdded(false), 2000);
   };
 
   return (
@@ -59,11 +70,11 @@ const ProductCard = ({ product }) => {
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 translate-y-3 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
             <button
               onClick={handleAddToCart}
-              disabled={product.stock === 0}
-              className="flex items-center gap-1 px-3 py-1.5 bg-white text-botanical-text text-xs font-sans font-medium rounded-full shadow-soft-md hover:bg-botanical-text hover:text-white transition-all duration-300 whitespace-nowrap"
+              disabled={product.stock === 0 || added}
+              className="flex items-center gap-1 px-3 py-1.5 bg-white text-botanical-text text-xs font-sans font-medium rounded-full shadow-soft-md hover:bg-botanical-text hover:text-white transition-all duration-300 whitespace-nowrap disabled:opacity-50"
             >
               <ShoppingBag className="w-2.5 h-2.5" />
-              {product.stock === 0 ? 'Out' : 'Add'}
+              {product.stock === 0 ? 'Out' : added ? 'Added' : 'Add'}
             </button>
           </div>
 
@@ -76,6 +87,16 @@ const ProductCard = ({ product }) => {
           {product.featured && product.stock > 0 && (
             <div className="absolute top-2 left-2 px-2 py-0.5 bg-botanical-primary text-white text-xs font-sans rounded-full">
               New
+            </div>
+          )}
+          {hasActiveOffer && (
+            <div className="absolute top-2 right-2 px-2 py-0.5 bg-red-500 text-white text-xs font-sans font-bold rounded-full shadow-sm">
+              -{product.offer.discountPercentage}%
+            </div>
+          )}
+          {isUpcomingOffer && (
+            <div className="absolute top-2 right-2 px-2 py-0.5 bg-botanical-muted text-white text-[10px] font-sans font-semibold rounded-full shadow-sm uppercase tracking-wider">
+              Upcoming
             </div>
           )}
         </div>
@@ -106,9 +127,16 @@ const ProductCard = ({ product }) => {
             </span>
           </div>
 
-          <p className="font-sans font-semibold text-botanical-text text-xs mt-0.5">
-            {formatPrice(product.price)}
-          </p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <p className="font-sans font-semibold text-botanical-text text-xs">
+              {formatPrice(discountedPrice)}
+            </p>
+            {hasActiveOffer && (
+              <p className="font-sans text-[10px] text-botanical-muted line-through">
+                {formatPrice(product.price)}
+              </p>
+            )}
+          </div>
         </div>
       </Link>
     </div>

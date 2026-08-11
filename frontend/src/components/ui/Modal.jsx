@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 
-const Modal = ({ isOpen, onClose, title, children, maxWidth = 'max-w-lg' }) => {
+const Modal = ({ isOpen, onClose, title, children, maxWidth = 'max-w-lg', disableOutsideClick = false }) => {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -16,7 +16,9 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = 'max-w-lg' }) => {
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-botanical-text/30 backdrop-blur-sm"
-        onClick={onClose}
+        onClick={() => {
+          if (!disableOutsideClick) onClose();
+        }}
       />
       {/* Panel */}
       <div

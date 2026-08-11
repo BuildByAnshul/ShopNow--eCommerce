@@ -52,8 +52,10 @@ const userSchema = new mongoose.Schema(
         pincode: { type: String, required: true },
       },
     ],
-    resetPasswordOtp: String,
-    resetPasswordExpires: Date,
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

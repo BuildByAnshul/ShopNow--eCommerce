@@ -8,7 +8,7 @@ import { createOrder } from '../redux/slices/orderSlice';
 import { paymentService, openRazorpayCheckout } from '../services/paymentService';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
-import { CheckCircle, ShieldCheck, Plus } from 'lucide-react';
+import { CheckCircle, ShieldCheck, Plus, MapPin } from 'lucide-react';
 import { addAddress } from '../redux/slices/authSlice';
 
 const formatPrice = (price) =>
@@ -28,6 +28,8 @@ const CheckoutPage = () => {
   const [address, setAddress] = useState(initialAddress);
   const [errors, setErrors] = useState({});
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [mapCoordinates, setMapCoordinates] = useState(null);
   const [step, setStep] = useState('address'); // 'address' | 'review' | 'success'
   const [paymentMethod, setPaymentMethod] = useState('online');
 
@@ -57,6 +59,46 @@ const CheckoutPage = () => {
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
+
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+    
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          setMapCoordinates({ lat: latitude, lng: longitude });
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          const data = await res.json();
+          if (data && data.address) {
+            setAddress(prev => ({
+              ...prev,
+              line1: data.address.road || data.address.suburb || data.display_name.split(',')[0],
+              line2: data.address.neighbourhood || data.address.county || '',
+              city: data.address.city || data.address.town || data.address.village || '',
+              state: data.address.state || '',
+              pincode: data.address.postcode || ''
+            }));
+            toast.success('Address auto-filled using your location!');
+          }
+        } catch (error) {
+          toast.error('Failed to get address from location');
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      (error) => {
+        toast.error('Location permission denied or unavailable');
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
 
   const handleProceedToReview = async () => {
     if (showNewAddressForm) {
@@ -214,6 +256,7 @@ const CheckoutPage = () => {
                         setShowNewAddressForm(true);
                         setSelectedAddressIndex(-1);
                         setAddress(initialAddress);
+                        setMapCoordinates(null);
                       }}
                       className="flex items-center gap-2 text-sm font-sans font-medium text-botanical-primary hover:underline mt-4"
                     >
@@ -236,6 +279,33 @@ const CheckoutPage = () => {
                         ← Back to saved addresses
                       </button>
                     )}
+                    <div className="flex items-center justify-between mb-4 mt-2">
+                      <h3 className="font-serif text-lg text-botanical-text font-semibold">Address Details</h3>
+                      <button
+                        type="button"
+                        onClick={handleGetLocation}
+                        disabled={isLocating}
+                        className="flex items-center gap-1.5 text-xs font-sans font-medium text-white bg-botanical-primary px-3 py-1.5 rounded-full shadow-soft hover:bg-botanical-text transition-colors disabled:opacity-50"
+                      >
+                        <MapPin className="w-3.5 h-3.5" />
+                        {isLocating ? 'Locating...' : 'Use Current Location'}
+                      </button>
+                    </div>
+
+                    {mapCoordinates && (
+                      <div className="w-full h-48 mb-6 rounded-xl overflow-hidden shadow-inner border border-botanical-border bg-gray-100">
+                        <iframe
+                          width="100%"
+                          height="100%"
+                          frameBorder="0"
+                          scrolling="no"
+                          marginHeight="0"
+                          marginWidth="0"
+                          src={`https://maps.google.com/maps?q=${mapCoordinates.lat},${mapCoordinates.lng}&z=15&output=embed`}
+                        ></iframe>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <Input label="Full Name" id="fullName" value={address.fullName} onChange={(e) => setAddress({ ...address, fullName: e.target.value })} error={errors.fullName} placeholder="Jane Doe" />
                       <Input label="Phone" id="phone" value={address.phone} onChange={(e) => setAddress({ ...address, phone: e.target.value })} error={errors.phone} placeholder="10-digit mobile number" />

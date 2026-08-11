@@ -10,6 +10,7 @@ import Button from '../components/ui/Button';
 import Spinner from '../components/ui/Spinner';
 import Badge from '../components/ui/Badge';
 import ProductCard from '../components/product/ProductCard';
+import VideoPlayer from '../components/ui/VideoPlayer';
 import { ShoppingBag, Star, Minus, Plus, ArrowLeft, Package, Truck, ShieldCheck, RefreshCcw, CheckCircle, Zap, Leaf, Play, Trash2 } from 'lucide-react';
 
 const formatPrice = (price) =>
@@ -32,6 +33,7 @@ const ProductDetailPage = () => {
   const [hasPurchased, setHasPurchased] = useState(false);
   const [checkingPurchase, setCheckingPurchase] = useState(false);
   const [reviewError, setReviewError] = useState('');
+  const [timeLeft, setTimeLeft] = useState('');
   const { user } = useAuth();
 
   useEffect(() => {
@@ -66,8 +68,42 @@ const ProductDetailPage = () => {
     }
   }, [id, user, product]);
 
+  const now = new Date();
+  const hasActiveOffer = product?.offer && product.offer.discountPercentage > 0 && product.offer.expiresAt && new Date(product.offer.expiresAt) > now && (!product.offer.startsAt || new Date(product.offer.startsAt) <= now);
+  const isUpcomingOffer = product?.offer && product.offer.discountPercentage > 0 && product.offer.startsAt && new Date(product.offer.startsAt) > now;
+
+  const discountedPrice = hasActiveOffer 
+    ? product.price - (product.price * product.offer.discountPercentage / 100)
+    : product?.price;
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (!hasActiveOffer && !isUpcomingOffer) return;
+
+    const calculateTimeLeft = () => {
+      const targetDate = isUpcomingOffer ? new Date(product.offer.startsAt) : new Date(product.offer.expiresAt);
+      const difference = targetDate - new Date();
+      if (difference > 0) {
+        const d = Math.floor(difference / (1000 * 60 * 60 * 24));
+        const h = Math.floor((difference / (1000 * 60 * 60)) % 24);
+        const m = Math.floor((difference / 1000 / 60) % 60);
+        const s = Math.floor((difference / 1000) % 60);
+        setTimeLeft(`${d}d ${h}h ${m}m ${s}s`);
+      } else {
+        setTimeLeft('');
+        if (isUpcomingOffer) {
+          dispatch(fetchProductById(id));
+        }
+      }
+    };
+
+    calculateTimeLeft();
+    const timer = setInterval(calculateTimeLeft, 1000);
+    return () => clearInterval(timer);
+  }, [hasActiveOffer, isUpcomingOffer, product, dispatch, id]);
+
   const handleAddToCart = () => {
-    addToCart(product, quantity);
+    addToCart({ ...product, price: discountedPrice }, quantity);
     setAdded(true);
     toast.success(`${quantity} ${product.name} added to cart`, {
       position: 'top-right',
@@ -168,9 +204,9 @@ const ProductDetailPage = () => {
           <ArrowLeft className="w-3 h-3" /> Back to Products
         </Link>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
           {/* Images + Video Gallery */}
-          <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex flex-col md:flex-row gap-4 items-start w-full">
             {/* Thumbnails (images + video) */}
             {mediaItems.length > 1 && (
               <div className="flex md:flex-col gap-3 overflow-x-auto md:overflow-y-auto md:max-h-[500px] custom-scrollbar pb-2 md:pb-0 md:pr-2 order-2 md:order-1 flex-shrink-0">
@@ -200,20 +236,26 @@ const ProductDetailPage = () => {
             )}
 
             {/* Main media viewer */}
-            <div className="flex-1 overflow-hidden bg-botanical-surface shadow-soft-lg rounded-3xl order-1 md:order-2">
-              <div className="aspect-square overflow-hidden">
+            <div className="flex-1 w-full overflow-hidden bg-botanical-surface shadow-soft-lg rounded-3xl order-1 md:order-2">
+              <div className="aspect-square w-full overflow-hidden relative">
                 {currentMedia?.type === 'video' ? (
-                  <video
-                    src={currentMedia.url}
-                    controls
-                    autoPlay
-                    className="w-full h-full object-contain bg-black transition-all duration-700"
+                  <VideoPlayer 
+                    options={{
+                      autoplay: true,
+                      controls: true,
+                      responsive: true,
+                      fill: true,
+                      sources: [{
+                        src: currentMedia.url,
+                        type: 'video/mp4'
+                      }]
+                    }} 
                   />
                 ) : (
                   <img
                     src={currentMedia?.url}
                     alt={product.name}
-                    className="w-full h-full object-cover transition-all duration-700"
+                    className="w-full h-full object-cover transition-all duration-700 absolute inset-0"
                   />
                 )}
               </div>
@@ -243,17 +285,33 @@ const ProductDetailPage = () => {
               </div>
             )}
 
-            <p className="font-serif text-4xl font-semibold text-botanical-text mb-5">
-              {formatPrice(product.price)}
-            </p>
+            <div className="flex items-end gap-3 mb-5">
+              <p className="font-serif text-4xl font-semibold text-botanical-text">
+                {formatPrice(discountedPrice)}
+              </p>
+              {hasActiveOffer && (
+                <p className="font-sans text-xl text-botanical-muted line-through mb-1">
+                  {formatPrice(product.price)}
+                </p>
+              )}
+            </div>
+
+            {(hasActiveOffer || isUpcomingOffer) && timeLeft && (
+              <div className={`inline-flex items-center gap-2 mb-5 px-4 py-2 border rounded-xl ${isUpcomingOffer ? 'bg-blue-50 border-blue-100' : 'bg-red-50 border-red-100'}`}>
+                <span className={`font-sans text-xs font-bold uppercase tracking-widest ${isUpcomingOffer ? 'text-blue-600' : 'text-red-600'}`}>
+                  {isUpcomingOffer ? 'Sale Starts In:' : 'Offer Ends In:'}
+                </span>
+                <span className={`font-sans text-sm font-semibold ${isUpcomingOffer ? 'text-blue-600' : 'text-red-600'}`}>{timeLeft}</span>
+              </div>
+            )}
 
             {/* Stock Badge */}
             <div className="flex items-center gap-2 mb-5">
               <Package className="w-4 h-4 text-botanical-muted" />
               {product.stock > 0 ? (
-                <span className="font-sans text-sm text-green-600 font-medium">
-                  In Stock • {product.stock} Available
-                </span>
+                <Badge variant="success">
+                  {`In Stock ${product.stock <= 10 && product.stock >= 5 ? '• Only a few left' : product.stock < 5 ? `• Only ${product.stock} left` : ''}`}
+                </Badge>
               ) : (
                 <Badge variant="failed">Out of Stock</Badge>
               )}
@@ -275,32 +333,14 @@ const ProductDetailPage = () => {
               {product.description}
             </p>
 
-            {/* Quantity + Add to Cart */}
+            {/* Add to Cart */}
             {product.stock > 0 && (
               <div className="flex flex-wrap gap-3 items-center mb-6">
-                {/* Qty control */}
-                <div className="flex items-center gap-3 border border-botanical-border rounded-full px-4 py-2.5">
-                  <button
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="w-5 h-5 flex items-center justify-center text-botanical-muted hover:text-botanical-text transition-colors"
-                    disabled={quantity <= 1}
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <span className="font-sans font-semibold text-botanical-text w-6 text-center">{quantity}</span>
-                  <button
-                    onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
-                    className="w-5 h-5 flex items-center justify-center text-botanical-muted hover:text-botanical-text transition-colors"
-                    disabled={quantity >= product.stock}
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-
                 <Button
                   onClick={handleAddToCart}
                   variant={added ? 'secondary' : 'primary'}
-                  className="flex-1 sm:flex-none text-sm px-8 py-2.5"
+                  className="flex-1 text-sm px-8 py-2.5"
+                  disabled={added}
                 >
                   <ShoppingBag className="w-4 h-4" />
                   {added ? 'Added to Cart!' : 'Add to Cart'}
@@ -478,7 +518,7 @@ const ProductDetailPage = () => {
             ) : (
               <div className="p-4 bg-botanical-surface rounded-xl text-center">
                 <p className="font-sans text-botanical-muted mb-2 text-sm">
-                  Only customers who purchased this product can leave a review.
+                  Only customers whose order has been delivered can leave a review.
                 </p>
                 <p className="font-sans text-xs text-botanical-muted">
                   Buy this product to share your experience with others.
