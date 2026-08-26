@@ -49,10 +49,6 @@ const productSchema = new mongoose.Schema(
       suitableFor: { type: String, default: '' }
     },
     howToUse: [{ type: String }],
-    embedding: {
-      type: [Number],
-      select: false // Avoid sending large vectors to frontend
-    },
     offer: {
       discountPercentage: { type: Number, min: 0, max: 100, default: 0 },
       startsAt: { type: Date },

@@ -29,6 +29,7 @@ const AdminProductsPage = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [categoryOpen, setCategoryOpen] = useState(false);
 
   // File states
@@ -227,9 +228,14 @@ const AdminProductsPage = () => {
 
   const handleDelete = async () => {
     if (!selectedProduct) return;
-    await dispatch(deleteProduct(selectedProduct._id));
-    setDeleteModalOpen(false);
-    setSelectedProduct(null);
+    setDeleting(true);
+    try {
+      await dispatch(deleteProduct(selectedProduct._id));
+      setDeleteModalOpen(false);
+      setSelectedProduct(null);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -545,7 +551,7 @@ const AdminProductsPage = () => {
           Are you sure you want to delete <strong className="text-botanical-text">{selectedProduct?.name}</strong>? This action cannot be undone.
         </p>
         <div className="flex gap-3">
-          <Button onClick={handleDelete} variant="accent" className="flex-1">Delete</Button>
+          <Button onClick={handleDelete} loading={deleting} variant="accent" className="flex-1">Delete</Button>
           <Button onClick={() => setDeleteModalOpen(false)} variant="secondary">Cancel</Button>
         </div>
       </Modal>

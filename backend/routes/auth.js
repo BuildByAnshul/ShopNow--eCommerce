@@ -1,5 +1,5 @@
 const express = require('express');
-const { register, verifyEmail, login, getMe, addAddress, googleLogin, updateProfile, forgotPassword, verifyOTP, resetPassword, getAllUsers, updateUserRole, deleteUser } = require('../controllers/authController');
+const { register, verifyEmail, login, logout, getMe, addAddress, googleLogin, updateProfile, forgotPassword, verifyOTP, resetPassword, getAllUsers, updateUserRole, deleteUser } = require('../controllers/authController');
 const { protect, admin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -7,6 +7,7 @@ const router = express.Router();
 router.post('/register', register);
 router.post('/verify-email', verifyEmail);
 router.post('/login', login);
+router.post('/logout', protect, logout);
 router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);
 router.post('/addresses', protect, addAddress);

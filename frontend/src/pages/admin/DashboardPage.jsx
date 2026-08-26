@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { fetchProducts } from '../../redux/slices/productSlice';
 import { fetchAllOrders } from '../../redux/slices/orderSlice';
 import { ShoppingBag, Package, Users, TrendingUp, ArrowRight, Tag, Activity, Calendar } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Brush } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Brush, AreaChart, Area } from 'recharts';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
@@ -18,11 +18,14 @@ const AdminDashboardPage = () => {
 
   const [users, setUsers] = useState([]);
   const [timeRange, setTimeRange] = useState('All Time');
+  const [analyticsData, setAnalyticsData] = useState([]);
+  const [locationView, setLocationView] = useState('city'); // 'city' or 'pincode'
 
   useEffect(() => {
     dispatch(fetchProducts({ limit: 100 }));
     dispatch(fetchAllOrders());
     fetchUsers();
+    fetchAnalytics();
   }, [dispatch]);
 
   const fetchUsers = async () => {
@@ -31,6 +34,15 @@ const AdminDashboardPage = () => {
       setUsers(res.data);
     } catch (err) {
       toast.error('Failed to load users for analytics');
+    }
+  };
+
+  const fetchAnalytics = async () => {
+    try {
+      const res = await api.get('/analytics');
+      setAnalyticsData(res.data);
+    } catch (err) {
+      console.error('Failed to load analytics', err);
     }
   };
 
@@ -61,17 +73,31 @@ const AdminDashboardPage = () => {
 
   // ─── Analytics Calculations ─────────────────────────────────
   
-  // 1. City Sales
-  const citySales = {};
+  // 0. Visitor Analytics
+  const visitorChartData = analyticsData.map(d => ({
+    date: d.date.split('-').slice(1).join('/'),
+    Guests: d.guestVisits,
+    Registered: d.registeredVisits
+  }));
+
+  // 1. Location Sales (City or Pincode with Case Insensitivity)
+  const locationSales = {};
   filteredOrders.forEach(order => {
-    if (order.paymentStatus === 'paid' && order.address?.city) {
-      const city = order.address.city;
-      const qty = order.items.reduce((sum, item) => sum + item.quantity, 0);
-      citySales[city] = (citySales[city] || 0) + qty;
+    if (order.paymentStatus === 'paid' && order.address) {
+      const locKey = locationView === 'city' ? order.address.city : order.address.pincode;
+      if (locKey) {
+        const normalizedKey = locKey.toString().trim().toLowerCase();
+        const qty = order.items.reduce((sum, item) => sum + item.quantity, 0);
+        locationSales[normalizedKey] = (locationSales[normalizedKey] || 0) + qty;
+      }
     }
   });
-  const cityData = Object.entries(citySales)
-    .map(([name, Sales]) => ({ name, Sales }))
+  
+  const locationData = Object.entries(locationSales)
+    .map(([name, Sales]) => ({ 
+      name: name.charAt(0).toUpperCase() + name.slice(1), 
+      Sales 
+    }))
     .sort((a, b) => b.Sales - a.Sales)
     .slice(0, 7);
 
@@ -222,6 +248,38 @@ const AdminDashboardPage = () => {
             </div>
           </div>
           
+          {/* Visitor Traffic (Guest vs Registered) */}
+          <div className="bg-white rounded-3xl p-7 shadow-soft mb-6">
+            <h3 className="font-sans text-sm font-semibold text-botanical-muted uppercase tracking-wider mb-6">Daily Visitor Traffic (Guests vs Registered)</h3>
+            <div className="h-72">
+              {analyticsData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={visitorChartData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                    <defs>
+                      <linearGradient id="colorGuests" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#C27B66" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#C27B66" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorReg" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#4a6b53" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#4a6b53" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}} />
+                    <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}} />
+                    <Tooltip contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.05)'}} />
+                    <Legend verticalAlign="top" height={36} iconType="circle" />
+                    <Area type="monotone" dataKey="Guests" stroke="#C27B66" fillOpacity={1} fill="url(#colorGuests)" />
+                    <Area type="monotone" dataKey="Registered" stroke="#4a6b53" fillOpacity={1} fill="url(#colorReg)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-sm text-botanical-muted">No visitor data collected yet. Visit the site homepage as a guest to generate data.</div>
+              )}
+            </div>
+          </div>
+
           {/* Product Performance (With Panning) */}
           <div className="bg-white rounded-3xl p-7 shadow-soft mb-6">
             <div className="flex justify-between items-center mb-6">
@@ -242,12 +300,22 @@ const AdminDashboardPage = () => {
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* City Sales */}
+            {/* Location Sales */}
             <div className="bg-white rounded-3xl p-7 shadow-soft">
-              <h3 className="font-sans text-sm font-semibold text-botanical-muted uppercase tracking-wider mb-6">Top Cities by Product Sales</h3>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-sans text-sm font-semibold text-botanical-muted uppercase tracking-wider">Top Locations by Product Sales</h3>
+                <select 
+                  className="text-xs bg-botanical-surface border border-botanical-border rounded-lg px-2 py-1 outline-none text-botanical-text cursor-pointer"
+                  value={locationView}
+                  onChange={(e) => setLocationView(e.target.value)}
+                >
+                  <option value="city">By City</option>
+                  <option value="pincode">By Pincode</option>
+                </select>
+              </div>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={cityData}>
+                  <BarChart data={locationData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}} />
                     <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}} />

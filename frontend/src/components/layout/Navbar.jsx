@@ -45,23 +45,28 @@ const Navbar = () => {
   const mutedTextColor = isDarkHeader ? 'text-white/80' : 'text-botanical-muted';
 
   useEffect(() => {
+    let ticking = false;
     const onScroll = () => {
-      setScrolled(window.scrollY > 24);
-      if (hasDarkHero) {
-        // Stay in dark mode until 80% of viewport height scrolled past
-        setPastHero(window.scrollY > window.innerHeight * 0.8);
-      } else {
-        setPastHero(true);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setScrolled(window.scrollY > 24);
+          if (hasDarkHero) {
+            setPastHero(window.scrollY > window.innerHeight * 0.8);
+          } else {
+            setPastHero(true);
+          }
+          ticking = false;
+        });
+        ticking = true;
       }
     };
 
-    // Reset on route change
     setPastHero(!hasDarkHero);
     setScrolled(false);
     onScroll();
-    window.addEventListener('scroll', onScroll);
+    window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, [location.pathname]);
+  }, [location.pathname, hasDarkHero]);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -146,8 +151,8 @@ const Navbar = () => {
     <header
       className={`fixed top-0 left-0 right-0 z-40 transition-all duration-500 ${scrolled
         ? isDarkHeader
-          ? 'bg-[#1a2e21]/95 backdrop-blur-xl shadow-soft border-b border-white/10'
-          : 'bg-botanical-bg/92 backdrop-blur-xl shadow-soft border-b border-botanical-border'
+          ? 'bg-[#1a2e21]/95 backdrop-blur-md shadow-soft border-b border-white/10'
+          : 'bg-botanical-bg/92 backdrop-blur-md shadow-soft border-b border-botanical-border'
         : 'bg-transparent'
         }`}
     >

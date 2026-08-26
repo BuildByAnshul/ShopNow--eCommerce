@@ -1,4 +1,6 @@
 const Product = require('../models/Product');
+const { generateProductEmbedding } = require('../utils/embeddingHelper');
+const { getPineconeIndex } = require('../utils/pineconeClient');
 const cloudinary = require('cloudinary').v2;
 
 cloudinary.config({
@@ -13,26 +15,26 @@ const buildSearchQuery = (searchTerm) => {
 
   const term = searchTerm.trim();
   const words = term.split(' ').filter(w => w.length > 0);
-  
+
   // Create multiple query conditions for flexible matching
   const orConditions = [];
-  
+
   // 1. Exact substring match in product name (case insensitive)
   orConditions.push({ name: { $regex: term, $options: 'i' } });
-  
+
   // 2. Individual word matches in product name
   words.forEach(word => {
     if (word.length > 0) {
       orConditions.push({ name: { $regex: word, $options: 'i' } });
     }
   });
-  
+
   // 3. First letter abbreviation (rvc = rose vitamin c)
   if (words.length > 1) {
     const abbrev = words.map(w => w[0]).join('');
     orConditions.push({ name: { $regex: abbrev, $options: 'i' } });
   }
-  
+
   // 4. Also search by category
   const categories = ['skincare', 'haircare', 'wellness', 'aromatherapy', 'supplements', 'home'];
   categories.forEach(cat => {
@@ -40,7 +42,7 @@ const buildSearchQuery = (searchTerm) => {
       orConditions.push({ category: cat });
     }
   });
-  
+
   return { $or: orConditions };
 };
 
@@ -55,7 +57,7 @@ const getProducts = async (req, res, next) => {
     if (category) query.category = category;
     if (featured === 'true') query.featured = true;
     if (skinType) query['details.suitableFor'] = { $regex: skinType, $options: 'i' };
-    
+
     if (sale === 'true') {
       query['offer.discountPercentage'] = { $gt: 0 };
       query['offer.expiresAt'] = { $gt: new Date() };
@@ -66,13 +68,13 @@ const getProducts = async (req, res, next) => {
         { 'offer.startsAt': null }
       ];
     }
-    
+
     if (offersOnly === 'true') {
       query['offer.discountPercentage'] = { $gt: 0 };
       query['offer.expiresAt'] = { $gt: new Date() };
       // No startsAt check because we want upcoming too
     }
-    
+
     // Use smart search query
     if (search) {
       const searchQuery = buildSearchQuery(search);
@@ -80,7 +82,7 @@ const getProducts = async (req, res, next) => {
         query = { ...query, ...searchQuery };
       }
     }
-    
+
     if (minPrice || maxPrice) {
       query.price = {};
       if (minPrice) query.price.$gte = Number(minPrice);
@@ -122,6 +124,27 @@ const getProductById = async (req, res, next) => {
 const createProduct = async (req, res, next) => {
   try {
     const product = await Product.create(req.body);
+
+    // Automatically generate vector embedding for Gemini AI Chatbot
+    const embedding = await generateProductEmbedding(product);
+    if (embedding && embedding.length > 0) {
+      const index = getPineconeIndex();
+      if (index) {
+        await index.upsert({
+          records: [
+            {
+              id: product._id.toString(),
+              values: embedding,
+              metadata: {
+                name: product.name,
+                category: product.category,
+              }
+            }
+          ]
+        });
+      }
+    }
+
     res.status(201).json(product);
   } catch (error) {
     next(error);
@@ -137,6 +160,27 @@ const updateProduct = async (req, res, next) => {
       runValidators: true,
     });
     if (!product) return res.status(404).json({ message: 'Product not found' });
+
+    // Automatically update vector embedding when product details change
+    const embedding = await generateProductEmbedding(product);
+    if (embedding && embedding.length > 0) {
+      const index = getPineconeIndex();
+      if (index) {
+        await index.upsert({
+          records: [
+            {
+              id: product._id.toString(),
+              values: embedding,
+              metadata: {
+                name: product.name,
+                category: product.category,
+              }
+            }
+          ]
+        });
+      }
+    }
+
     res.json(product);
   } catch (error) {
     next(error);
@@ -177,6 +221,16 @@ const deleteProduct = async (req, res, next) => {
       console.log('Warning deleting main product folder:', err.message);
     }
 
+    // 4. Delete Pinecone embedding
+    try {
+      const index = getPineconeIndex();
+      if (index) {
+        await index.deleteOne({ id: product._id.toString() });
+      }
+    } catch (err) {
+      console.log('Warning deleting pinecone vector:', err.message);
+    }
+
     await Product.findByIdAndDelete(req.params.id);
     res.json({ message: 'Product deleted along with Cloudinary assets' });
   } catch (error) {
@@ -189,7 +243,7 @@ const deleteProduct = async (req, res, next) => {
 const addReview = async (req, res, next) => {
   try {
     const { rating, comment } = req.body;
-    
+
     // Admins cannot rate products
     if (req.user.role === 'admin') {
       return res.status(403).json({ message: 'Admins cannot rate products' });

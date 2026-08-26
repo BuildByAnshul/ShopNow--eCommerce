@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const ChatSession = require('../models/ChatSession');
 const Product = require('../models/Product');
-const { performVectorSearch } = require('../utils/vectorSearch');
+const { getPineconeIndex } = require('../utils/pineconeClient');
 
 // Initialize Gemini
 let genAI = null;
@@ -75,11 +75,23 @@ const askQuestion = async (req, res, next) => {
     const embedResult = await embeddingModel.embedContent(message);
     const queryEmbedding = embedResult.embedding.values;
 
-    // 2. Fetch all products with embeddings (Select embedding explicitly)
-    const products = await Product.find({}).select('+embedding');
+    // 2. Query Pinecone for top matches
+    const index = getPineconeIndex();
+    let topMatches = [];
+    if (index) {
+      const queryResponse = await index.query({
+        vector: queryEmbedding,
+        topK: 3,
+        includeMetadata: false
+      });
 
-    // 3. Perform in-memory vector search
-    const topMatches = performVectorSearch(queryEmbedding, products, 3); // Get top 3 related products
+      const productIds = queryResponse.matches.map(match => match.id);
+
+      // 3. Fetch matched products from MongoDB
+      if (productIds.length > 0) {
+        topMatches = await Product.find({ _id: { $in: productIds } });
+      }
+    }
 
     let contextString = "No related products found in the catalog.";
     if (topMatches.length > 0) {
@@ -130,10 +142,8 @@ const askQuestion = async (req, res, next) => {
 
     // 6. Call LLM
     const chatModel = genAI.getGenerativeModel({
-      model: "gemini-flash-latest",
-      generationConfig: {
-        responseMimeType: "application/json",
-      }
+      model: "gemini-3.5-flash",
+
     });
     const result = await chatModel.generateContent(prompt);
     let responseText = result.response.text();

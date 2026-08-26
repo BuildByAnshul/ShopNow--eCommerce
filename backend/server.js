@@ -11,6 +11,8 @@ const orderRoutes = require('./routes/orders');
 const paymentRoutes = require('./routes/payment');
 const uploadRoutes = require('./routes/upload');
 const chatbotRoutes = require('./routes/chatbotRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
+const sessionRoutes = require('./routes/sessionRoutes');
 const app = express();
 
 // Connect to MongoDB
@@ -36,6 +38,8 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/chatbot', chatbotRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/sessions', sessionRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

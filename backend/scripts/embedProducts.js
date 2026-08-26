@@ -1,7 +1,8 @@
-require('dotenv').config({ path: '../.env' });
+require('dotenv').config({ path: __dirname + '/../.env' });
 const mongoose = require('mongoose');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const Product = require('../models/Product');
+const { getPineconeIndex } = require('../utils/pineconeClient');
 
 // Initialize Gemini API
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -41,9 +42,26 @@ const generateEmbeddings = async () => {
       console.log(`Generating embedding for: ${product.name}`);
       const result = await model.embedContent(textToEmbed);
       const embedding = result.embedding.values;
+      if (!embedding || embedding.length === 0) {
+        console.error(`Failed to generate embedding for ${product.name}`);
+        continue;
+      }
 
-      product.embedding = embedding;
-      await product.save();
+      const index = getPineconeIndex();
+      if (index) {
+        await index.upsert({
+          records: [
+          {
+            id: product._id.toString(),
+            values: embedding,
+            metadata: {
+              name: product.name,
+              category: product.category,
+            }
+          }
+          ]
+        });
+      }
       
       // Sleep slightly to respect rate limits
       await new Promise(resolve => setTimeout(resolve, 500));

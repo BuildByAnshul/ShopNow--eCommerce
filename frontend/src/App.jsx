@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import Navbar from './components/layout/Navbar';
@@ -6,6 +6,7 @@ import Footer from './components/layout/Footer';
 import Spinner from './components/ui/Spinner';
 import Chatbot from './components/ui/Chatbot';
 import { useAuth } from './hooks/useAuth';
+import api from './services/api';
 
 // Lazy-loaded pages---------     ---------test
 const HomePage = lazy(() => import('./pages/HomePage'));
@@ -59,14 +60,52 @@ const PageLoader = () => (
 );
 
 const App = () => {
+  const { isAuthenticated, loading } = useAuth();
+
+  useEffect(() => {
+    const trackVisit = async () => {
+      if (!loading && !sessionStorage.getItem('visit_tracked')) {
+        try {
+          const type = isAuthenticated ? 'registered' : 'guest';
+          await api.post('/analytics/visit', { type });
+          sessionStorage.setItem('visit_tracked', 'true');
+        } catch (error) {
+          console.error('Failed to track visit', error);
+        }
+      }
+    };
+    trackVisit();
+  }, [isAuthenticated, loading]);
+
+  // Periodic active session validation (every 10s & on tab focus)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const checkSessionValidity = async () => {
+      try {
+        await api.get('/auth/me');
+      } catch (err) {
+        // Interceptor will handle 401 redirect
+      }
+    };
+
+    const interval = setInterval(checkSessionValidity, 10000);
+    window.addEventListener('focus', checkSessionValidity);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', checkSessionValidity);
+    };
+  }, [isAuthenticated]);
+
   return (
     <>
-      <Toaster 
-        position="top-right" 
+      <Toaster
+        position="top-right"
         toastOptions={{
           style: {
             background: '#ffffff',
-            color: '#1a3627', 
+            color: '#1a3627',
             fontFamily: 'inherit',
             fontSize: '14px',
             fontWeight: '500',
@@ -91,35 +130,35 @@ const App = () => {
       />
       <Suspense fallback={<PageLoader />}>
         <Routes>
-        {/* Auth routes — no Navbar/Footer */}
-        <Route path="/login" element={<AuthLayout><LoginPage /></AuthLayout>} />
-        <Route path="/register" element={<AuthLayout><RegisterPage /></AuthLayout>} />
+          {/* Auth routes — no Navbar/Footer */}
+          <Route path="/login" element={<AuthLayout><LoginPage /></AuthLayout>} />
+          <Route path="/register" element={<AuthLayout><RegisterPage /></AuthLayout>} />
 
-        {/* Public routes */}
-        <Route path="/" element={<Layout><HomePage /></Layout>} />
-        <Route path="/about" element={<Layout><AboutPage /></Layout>} />
-        <Route path="/products" element={<Layout><ProductsPage /></Layout>} />
-        <Route path="/products/:id" element={<Layout><ProductDetailPage /></Layout>} />
-        <Route path="/offers" element={<Layout><OffersPage /></Layout>} />
-        <Route path="/cart" element={<Layout><CartPage /></Layout>} />
+          {/* Public routes */}
+          <Route path="/" element={<Layout><HomePage /></Layout>} />
+          <Route path="/about" element={<Layout><AboutPage /></Layout>} />
+          <Route path="/products" element={<Layout><ProductsPage /></Layout>} />
+          <Route path="/products/:id" element={<Layout><ProductDetailPage /></Layout>} />
+          <Route path="/offers" element={<Layout><OffersPage /></Layout>} />
+          <Route path="/cart" element={<Layout><CartPage /></Layout>} />
 
-        {/* Protected user routes */}
-        <Route path="/profile" element={<ProtectedRoute><Layout><ProfilePage /></Layout></ProtectedRoute>} />
-        <Route path="/checkout" element={<ProtectedRoute><Layout><CheckoutPage /></Layout></ProtectedRoute>} />
-        <Route path="/orders" element={<ProtectedRoute><Layout><OrdersPage /></Layout></ProtectedRoute>} />
-        <Route path="/invoice/:id" element={<ProtectedRoute><Layout><InvoicePage /></Layout></ProtectedRoute>} />
+          {/* Protected user routes */}
+          <Route path="/profile" element={<ProtectedRoute><Layout><ProfilePage /></Layout></ProtectedRoute>} />
+          <Route path="/checkout" element={<ProtectedRoute><Layout><CheckoutPage /></Layout></ProtectedRoute>} />
+          <Route path="/orders" element={<ProtectedRoute><Layout><OrdersPage /></Layout></ProtectedRoute>} />
+          <Route path="/invoice/:id" element={<ProtectedRoute><Layout><InvoicePage /></Layout></ProtectedRoute>} />
 
-        {/* Admin routes */}
-        <Route path="/admin" element={<AdminRoute><Layout><AdminDashboardPage /></Layout></AdminRoute>} />
-        <Route path="/admin/products" element={<AdminRoute><Layout><AdminProductsPage /></Layout></AdminRoute>} />
-        <Route path="/admin/offers" element={<AdminRoute><Layout><AdminOffersPage /></Layout></AdminRoute>} />
-        <Route path="/admin/orders" element={<AdminRoute><Layout><AdminOrdersPage /></Layout></AdminRoute>} />
-        <Route path="/admin/users" element={<AdminRoute><Layout><AdminUsersPage /></Layout></AdminRoute>} />
+          {/* Admin routes */}
+          <Route path="/admin" element={<AdminRoute><Layout><AdminDashboardPage /></Layout></AdminRoute>} />
+          <Route path="/admin/products" element={<AdminRoute><Layout><AdminProductsPage /></Layout></AdminRoute>} />
+          <Route path="/admin/offers" element={<AdminRoute><Layout><AdminOffersPage /></Layout></AdminRoute>} />
+          <Route path="/admin/orders" element={<AdminRoute><Layout><AdminOrdersPage /></Layout></AdminRoute>} />
+          <Route path="/admin/users" element={<AdminRoute><Layout><AdminUsersPage /></Layout></AdminRoute>} />
 
-        {/* 404 */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Suspense>
+          {/* 404 */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </>
   );
 };

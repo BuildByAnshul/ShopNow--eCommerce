@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Otp = require('../models/Otp');
+const Session = require('../models/Session'); // Session tracking model
 const { OAuth2Client } = require('google-auth-library');
 const nodemailer = require('nodemailer');
 
@@ -153,13 +154,23 @@ const login = async (req, res, next) => {
       return res.status(403).json({ message: 'Please verify your email first', notVerified: true, email: user.email });
     }
 
+    const token = generateToken(user._id);
+
+    // --- Create Active Session Document ---
+    await Session.create({
+      userId: user._id,
+      token,
+      ip: req.ip || req.headers['x-forwarded-for'] || '',
+      device: req.headers['user-agent'] || '',
+    });
+
     res.json({
       _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
       addresses: user.addresses || [],
-      token: generateToken(user._id),
+      token,
     });
   } catch (error) {
     next(error);
@@ -170,8 +181,21 @@ const login = async (req, res, next) => {
 // @route GET /api/auth/me
 const getMe = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user._id);
-    res.json(user);
+    const user = await User.findById(req.user._id).select('+password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      addresses: user.addresses || [],
+      googleId: user.googleId,
+      hasPassword: Boolean(user.password),
+      createdAt: user.createdAt,
+    });
   } catch (error) {
     next(error);
   }
@@ -233,7 +257,7 @@ const googleLogin = async (req, res, next) => {
       googleId = payload.sub;
     }
 
-    let user = await User.findOne({ email });
+    let user = await User.findOne({ email }).select('+password');
 
     if (user) {
       if (!user.googleId) {
@@ -249,13 +273,25 @@ const googleLogin = async (req, res, next) => {
       });
     }
 
+    const userToken = generateToken(user._id);
+
+    // --- Create Active Session Document ---
+    await Session.create({
+      userId: user._id,
+      token: userToken,
+      ip: req.ip || req.headers['x-forwarded-for'] || '',
+      device: req.headers['user-agent'] || '',
+    });
+
     res.json({
       _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
       addresses: user.addresses || [],
-      token: generateToken(user._id),
+      googleId: user.googleId,
+      hasPassword: Boolean(user.password),
+      token: userToken,
     });
   } catch (error) {
     console.error('Google login error:', error);
@@ -263,32 +299,41 @@ const googleLogin = async (req, res, next) => {
   }
 };
 
-// @desc  Update user profile
+// @desc  Update user profile & set password
 // @route PUT /api/auth/profile
 const updateProfile = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user._id).select('+password');
 
-    if (user) {
-      user.name = req.body.name || user.name;
-      if (req.body.password) {
-        user.password = req.body.password;
-      }
-
-      const updatedUser = await user.save();
-
-      res.json({
-        _id: updatedUser._id,
-        name: updatedUser.name,
-        email: updatedUser.email,
-        role: updatedUser.role,
-        addresses: updatedUser.addresses,
-      });
-    } else {
-      res.status(404).json({ message: 'User not found' });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
+
+    if (req.body.name) {
+      user.name = req.body.name;
+    }
+
+    let passwordUpdated = false;
+    const newPass = req.body.password || req.body.newPassword;
+    if (newPass && newPass.trim().length >= 6) {
+      user.password = newPass; // Pre-save hook automatically hashes password
+      passwordUpdated = true;
+    }
+
+    const updatedUser = await user.save();
+
+    res.json({
+      _id: updatedUser._id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      role: updatedUser.role,
+      addresses: updatedUser.addresses,
+      googleId: updatedUser.googleId,
+      hasPassword: Boolean(updatedUser.password),
+      message: passwordUpdated ? 'Password set successfully!' : 'Profile updated successfully!',
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    next(error);
   }
 };
 
@@ -444,5 +489,38 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
+// @desc  Logout user (deactivate current session)
+// @route POST /api/auth/logout
+const logout = async (req, res, next) => {
+  try {
+    let token;
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+      token = req.headers.authorization.split(' ')[1];
+    }
 
-module.exports = { register, verifyEmail, login, getMe, addAddress, googleLogin, updateProfile, forgotPassword, verifyOTP, resetPassword, getAllUsers, updateUserRole, deleteUser };
+    if (token) {
+      await Session.updateOne({ token }, { isActive: false });
+    }
+
+    res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  register,
+  verifyEmail,
+  login,
+  logout,
+  getMe,
+  addAddress,
+  googleLogin,
+  updateProfile,
+  forgotPassword,
+  verifyOTP,
+  resetPassword,
+  getAllUsers,
+  updateUserRole,
+  deleteUser,
+};

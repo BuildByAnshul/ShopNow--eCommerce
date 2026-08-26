@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Session = require('../models/Session'); // Session tracking model
 
 const protect = async (req, res, next) => {
   try {
@@ -22,6 +23,15 @@ const protect = async (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ message: 'User not found' });
     }
+
+    // --- Active Session Check ---
+    const session = await Session.findOne({ token, isActive: true });
+    if (!session) {
+      return res.status(401).json({ message: 'Session expired or logged out' });
+    }
+
+    // Update lastActive timestamp asynchronously (fire and forget, non-blocking)
+    Session.updateOne({ _id: session._id }, { lastActive: new Date() }).exec();
 
     next();
   } catch (error) {
