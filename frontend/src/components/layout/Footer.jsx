@@ -36,23 +36,6 @@ const Footer = () => (
             nature's finest ingredients for your daily rituals.
           </p>
 
-          {/* Newsletter pill */}
-          <form onSubmit={(e) => e.preventDefault()}
-            className="flex gap-2 max-w-xs">
-            <input
-              type="email"
-              placeholder="Your email"
-              className="flex-1 px-4 py-2.5 rounded-full text-sm font-sans bg-white/10 border border-white/20
-                         text-white placeholder-white/40 focus:outline-none focus:border-botanical-primary
-                         transition-colors duration-300"
-            />
-            <button type="submit"
-              className="px-4 py-2.5 rounded-full bg-botanical-accent text-white text-xs font-medium
-                         hover:bg-botanical-accent-dark transition-colors duration-300 whitespace-nowrap">
-              Subscribe
-            </button>
-          </form>
-
           {/* Social icons */}
           <div className="flex gap-3 mt-8">
             {SOCIAL.map(({ Icon, label, href }) => (
@@ -134,3 +117,4 @@ const Footer = () => (
 );
 
 export default Footer;
+
