@@ -7,7 +7,7 @@ A full-stack **E-commerce Web Application** built using the **MERN stack**, secu
 ## 🌟 Live Demo
 
 * 🌐 **Frontend:** https://shopnow-ecomm.netlify.app/
-* ⚙️ **Backend API:** https://onrender.com *(Demo backend link)*
+* ⚙️ **Backend API:** https://onrender.com 
 
 ---
 
